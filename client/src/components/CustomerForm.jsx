@@ -1,85 +1,119 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { Formik, Form, Field } from 'formik';
+import * as Yup from 'yup';
+
+const validationSchema = Yup.object().shape({
+  name: Yup.string()
+    .required('Customer name is required'),
+  phone: Yup.string()
+    .required('Phone number is required')
+    .matches(/^\d{10}$/, 'Please enter a valid 10-digit phone number'),
+  address: Yup.string()
+    .required('Address is required'),
+  email: Yup.string()
+    .email('Please enter a valid email address')
+});
 
 const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange }) => {
-  const [customer, setCustomer] = useState({
+  const initialValues = {
     name: customerData?.name || '',
     phone: customerData?.phone || '',
     address: customerData?.address || '',
     email: customerData?.email || '',
-  });
+  };
 
-  useEffect(() => {
-    if (customerData) {
-      const updatedCustomer = {
-        name: customerData.name || '',
-        phone: customerData.phone || '',
-        address: customerData.address || '',
-        email: customerData.email || '',
-      };
-      setCustomer(updatedCustomer);
-      // Send data to Cart component
-      onCustomerDataChange?.(updatedCustomer);
-    }
-  }, [customerData]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    const updatedCustomer = { ...customer, [name]: value };
-    setCustomer(updatedCustomer);
-    onCustomerInfoUpdate(updatedCustomer);
-    // Send data to Cart component
-    onCustomerDataChange?.(updatedCustomer);
+  const handleSubmit = (values, { setSubmitting }) => {
+    onCustomerInfoUpdate?.(values);
+    onCustomerDataChange?.(values);
+    setSubmitting(false);
   };
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
       <h2 className="text-lg font-semibold mb-4">Customer Information</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Name</label>
-          <input
-            type="text"
-            name="name"
-            placeholder="Customer name"
-            className="w-full px-3 py-2 border rounded-md"
-            value={customer.name}
-            onChange={handleChange}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Phone</label>
-          <input
-            type="tel"
-            name="phone"
-            placeholder="Phone number"
-            className="w-full px-3 py-2 border rounded-md"
-            value={customer.phone}
-            onChange={handleChange}
-          />
-        </div>
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-1">Address</label>
-          <textarea
-            name="address"
-            placeholder="Delivery address"
-            className="w-full px-3 py-2 border rounded-md"
-            value={customer.address}
-            onChange={handleChange}
-            rows="2"
-          ></textarea>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Email (Optional)</label>
-          <input
-            type="email"
-            name="email"
-            placeholder="Email address"
-            className="w-full px-3 py-2 border rounded-md"
-            value={customer.email}
-            onChange={handleChange}
-          />
-        </div>
-      </div>
+      <Formik
+        initialValues={initialValues}
+        validationSchema={validationSchema}
+        onSubmit={handleSubmit}
+        enableReinitialize
+      >
+        {({ errors, touched, values, handleChange }) => (
+          <Form className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Name *</label>
+              <Field
+                type="text"
+                name="name"
+                placeholder="Customer name"
+                className="w-full px-3 py-2 border rounded-md"
+                onChange={(e) => {
+                  handleChange(e);
+                  onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
+                  onCustomerDataChange?.({ ...values, [e.target.name]: e.target.value });
+                }}
+              />
+              {errors.name && touched.name && (
+                <p className="text-gray-600 text-sm mt-1">{errors.name}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone *</label>
+              <Field
+                type="tel"
+                name="phone"
+                placeholder="Phone number"
+                className="w-full px-3 py-2 border rounded-md"
+                onChange={(e) => {
+                  handleChange(e);
+                  onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
+                  onCustomerDataChange?.({ ...values, [e.target.name]: e.target.value });
+                }}
+              />
+              {errors.phone && touched.phone && (
+                <p className="text-gray-600 text-sm mt-1">{errors.phone}</p>
+              )}
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Address *</label>
+              <Field
+                as="textarea"
+                name="address"
+                placeholder="Delivery address"
+                className="w-full px-3 py-2 border rounded-md"
+                rows="2"
+                onChange={(e) => {
+                  handleChange(e);
+                  onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
+                  onCustomerDataChange?.({ ...values, [e.target.name]: e.target.value });
+                }}
+              />
+              {errors.address && touched.address && (
+                <p className="text-gray-600 text-sm mt-1">{errors.address}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <Field
+                type="email"
+                name="email"
+                placeholder="Email address (Optional)"
+                className="w-full px-3 py-2 border rounded-md"
+                onChange={(e) => {
+                  handleChange(e);
+                  onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
+                  onCustomerDataChange?.({ ...values, [e.target.name]: e.target.value });
+                }}
+              />
+              {errors.email && touched.email && (
+                <p className="text-gray-600 text-sm mt-1">{errors.email}</p>
+              )}
+            </div>
+          </Form>
+        )}
+      </Formik>
 
       {customerData?.previousOrders && customerData.previousOrders.length > 0 && (
         <div className="mt-4">

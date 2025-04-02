@@ -12,6 +12,143 @@ import {
 } from '../redux/services/restaurantApi';
 import { useToast } from "@/hooks/use-toast";
 
+const SPICY_LEVELS = [
+  { id: 'not-spicy', label: 'Not Spicy', value: 'Not Spicy' },
+  { id: 'normal', label: 'Normal', value: 'Normal' },
+  { id: 'spicy', label: 'Spicy', value: 'Spicy' },
+  { id: 'extra-spicy', label: 'Extra Spicy', value: 'Extra Spicy' }
+];
+
+const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreferences, onSpicyChange, addOns, onAddOnToggle, specialInstructions, onInstructionsChange }) => {
+  return (
+    <div
+      className={`${
+        isSelected ? 'sm:col-span-2 md:col-span-2 lg:col-span-2' : ''
+      } relative group`}
+    >
+      <div
+        className={`flex flex-col rounded-lg transition-all duration-200 ${
+          isSelected
+            ? 'bg-white border-2 border-app-primary shadow-lg' 
+            : 'bg-white hover:bg-gray-50 border hover:shadow-md h-[140px]'
+        }`}
+      >
+        {/* Item Header - Always Visible */}
+        <div 
+          onClick={() => onSelect(item)}
+          className={`flex flex-col items-center p-4 cursor-pointer ${isSelected ? 'pb-2' : 'h-full'}`}
+        >
+          <div className="relative w-16 h-16 mb-3">
+            <img 
+              src={item.image || 'https://via.placeholder.com/50'} 
+              alt={item.itemName} 
+              className="w-full h-full rounded-full object-cover border-2 border-white shadow-md group-hover:shadow-lg transition-shadow" 
+            />
+            <div className="absolute -top-2 -right-2">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => onSelect(item)}
+                className="h-5 w-5 rounded-md border-2 border-app-primary text-app-primary focus:ring-app-primary cursor-pointer"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+          <span className="text-sm font-medium text-center line-clamp-2">{item.itemName}</span>
+          {/* <span className="text-sm font-bold mt-2 text-app-primary">₹{item.price}</span> */}
+        </div>
+
+        {/* Expanded Content - Visible when Selected */}
+        {isSelected && (
+          <div className="p-4 border-t bg-gradient-to-b from-gray-50 to-white">
+            {/* Spicy Preference */}
+            <div className="mb-4">
+              <label className="block text-xs font-medium mb-2 text-gray-600">Spicy Levels (Select Multiple)</label>
+              <div className="grid grid-cols-2 gap-2">
+                {SPICY_LEVELS.map((level) => (
+                  <label
+                    key={level.id}
+                    className={`flex items-center justify-between p-2 rounded border transition-all ${
+                      spicyPreferences?.includes(level.value)
+                        ? 'bg-app-primary/5 border-app-primary'
+                        : 'bg-white hover:bg-gray-50 border-gray-200'
+                    } cursor-pointer`}
+                  >
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        value={level.value}
+                        checked={spicyPreferences?.includes(level.value)}
+                        onChange={() => onSpicyChange(item._id, level.value)}
+                        className="h-4 w-4 rounded text-app-primary border-gray-300 focus:ring-app-primary"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">{level.label}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Add-ons Section */}
+            {addOns?.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-xs font-medium mb-2 text-gray-600">Add-ons</label>
+                <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                  {addOns.map(addOn => (
+                    <label 
+                      key={addOn._id} 
+                      className={`flex items-center justify-between p-2 rounded border transition-all ${
+                        onAddOnToggle(item._id, addOn)
+                          ? 'bg-app-primary/5 border-app-primary'
+                          : 'bg-white hover:bg-gray-50 border-gray-200'
+                      } cursor-pointer`}
+                    >
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={onAddOnToggle(item._id, addOn)}
+                          onChange={() => onAddOnToggle(item._id, addOn)}
+                          className="mr-2 text-app-primary rounded border-gray-300 focus:ring-app-primary"
+                        />
+                        <span className="text-sm">{addOn.itemName}</span>
+                      </div>
+                      <span className="text-app-primary font-medium text-sm">₹{addOn.price}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Special Instructions */}
+            <div className="mb-4">
+              <label className="block text-xs font-medium mb-2 text-gray-600">Special Instructions</label>
+              <textarea
+                placeholder="Any special requests..."
+                rows="2"
+                className="w-full text-sm p-2 border rounded bg-white text-gray-800 resize-none focus:border-app-primary focus:ring-1 focus:ring-app-primary"
+                value={specialInstructions}
+                onChange={(e) => onInstructionsChange(item._id, e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+
+            {/* Add to Cart Button */}
+            <button
+              className="w-full bg-app-primary text-white font-medium py-2.5 px-4 rounded-lg hover:bg-app-primary/90 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCart(item);
+              }}
+            >
+              Add to Cart
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const RestaurantsList = ({ onMenuItemSelect }) => {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [selectedSubRestaurant, setSelectedSubRestaurant] = useState(null);
@@ -86,15 +223,48 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
     setSelectedItems([]);
   };
 
+  const handleSearch = (term) => {
+    setSearchTerm(term);
+    if (!term) {
+      setFilteredItems([]);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    setFilteredItems([]);
+  };
+
   const handleItemClick = (item) => {
     setSelectedItems(prev => {
       const isSelected = prev.some(i => i._id === item._id);
       if (isSelected) {
+        // If deselecting, clear any associated data
+        setSelectedAddOns(prev => {
+          const newAddOns = { ...prev };
+          delete newAddOns[item._id];
+          return newAddOns;
+        });
+        setSpicyPreferences(prev => {
+          const newPrefs = { ...prev };
+          delete newPrefs[item._id];
+          return newPrefs;
+        });
+        setSpecialInstructions(prev => {
+          const newInstructions = { ...prev };
+          delete newInstructions[item._id];
+          return newInstructions;
+        });
         return prev.filter(i => i._id !== item._id);
       } else {
         return [...prev, item];
       }
     });
+
+    // Clear search if selecting from search results
+    if (searchTerm && filteredItems.some(i => i._id === item._id)) {
+      clearSearch();
+    }
   };
 
   const handleAddOnToggle = (itemId, addOn) => {
@@ -117,10 +287,24 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   };
 
   const handleSpicyPreferenceChange = (itemId, value) => {
-    setSpicyPreferences(prev => ({
-      ...prev,
-      [itemId]: value
-    }));
+    setSpicyPreferences(prev => {
+      const currentPreferences = prev[itemId] || [];
+      const exists = currentPreferences.includes(value);
+      
+      if (exists) {
+        // Remove the preference if it already exists
+        return {
+          ...prev,
+          [itemId]: currentPreferences.filter(pref => pref !== value)
+        };
+      } else {
+        // Add the new preference
+        return {
+          ...prev,
+          [itemId]: [...currentPreferences, value]
+        };
+      }
+    });
   };
 
   const handleSpecialInstructionChange = (itemId, value) => {
@@ -132,14 +316,14 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
 
   const handleAddToCart = (item) => {
     const selectedItemAddOns = selectedAddOns[item._id] || [];
-    const spicyPreference = spicyPreferences[item._id] || 'Normal';
+    const itemSpicyPreferences = spicyPreferences[item._id] || [];
     const specialInstruction = specialInstructions[item._id] || '';
 
-    // Validation checks
-    if (!spicyPreference) {
+    // Validate at least one spicy preference is selected
+    if (itemSpicyPreferences.length === 0) {
       toast({
-        title: "Please select spicy preference",
-        description: "Choose a spicy level for your item",
+        title: "Please select spicy level(s)",
+        description: "Choose at least one spicy level before adding to cart",
         variant: "destructive",
       });
       return;
@@ -148,19 +332,24 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
     // Create the item object with all selections
     const itemToAdd = {
       ...item,
-      addOns: selectedItemAddOns,
+      addOns: selectedItemAddOns.map(addOn => ({
+        _id: addOn._id,
+        itemName: addOn.itemName || addOn.name,
+        price: parseFloat(addOn.price)
+      })),
       specialInstructions: specialInstruction,
-      spicyPreference: spicyPreference,
-      quantity: 1
+      spicyPreferences: itemSpicyPreferences,
+      quantity: 1,
+      basePrice: parseFloat(item.price) // Store the base price separately
     };
 
+    // Call the parent component's handler with the item and its configuration
     onMenuItemSelect(itemToAdd);
     
     // Success toast with more details
     toast({
       title: "Item added to cart",
-      description: `${item.itemName || item.name} with ${selectedItemAddOns.length} add-ons and ${spicyPreference} spice level. The quantity will be increased if this exact configuration already exists in your cart.`,
-      variant: "default",
+      description: `${item.itemName} with ${selectedItemAddOns.length} add-on${selectedItemAddOns.length !== 1 ? 's' : ''} and ${itemSpicyPreferences.join(', ')} spice levels`,
     });
 
     // Clear selections for this item
@@ -180,10 +369,11 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
       return newInstructions;
     });
     setSelectedItems(prev => prev.filter(i => i._id !== item._id));
-  };
 
-  const handleSearch = (term) => {
-    setSearchTerm(term);
+    // Clear search if item was selected from search results
+    if (searchTerm && filteredItems.some(i => i._id === item._id)) {
+      clearSearch();
+    }
   };
 
   const renderLoading = () => (
@@ -193,268 +383,195 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   );
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto space-y-6">
       <div className="mb-4">
         <SearchBar 
           onCustomerSearch={handleSearch} 
           placeholder="Search for menu items..." 
           buttonText="Find" 
           searchType="menu"
+          value={searchTerm}
+          onChange={(e) => handleSearch(e.target.value)}
         />
-        
+
         {searchTerm && filteredItems.length > 0 && (
-          <div className="mb-4 p-3 bg-gray-50 rounded-md shadow-sm">
-            <h3 className="text-sm font-medium mb-2">Search Results</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold text-gray-700 mb-3">Search Results</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {filteredItems.map(item => (
-                <div 
-                  key={item._id} 
-                  className="flex items-center justify-between p-2 bg-white rounded border hover:bg-gray-50 shadow-sm transition-all cursor-pointer"
-                  onClick={() => handleAddToCart(item)}
-                >
-                  <div className="flex items-center">
-                    <img 
-                      src={item.image} 
-                      alt={item.itemName || item.name} 
-                      className="w-12 h-12 rounded-md mr-2 object-cover border border-gray-200" 
-                    />
-                    <div>
-                      <div className="font-medium">{item.itemName || item.name}</div>
-                      <div className="text-xs text-gray-500">
-                        {item.description && item.description.substring(0, 50)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-sm font-medium text-app-primary">₹{item.price}</div>
-                </div>
+                <MenuItemCard
+                  key={item._id}
+                  item={item}
+                  isSelected={selectedItems.some(i => i._id === item._id)}
+                  onSelect={handleItemClick}
+                  onAddToCart={handleAddToCart}
+                  spicyPreferences={spicyPreferences[item._id]}
+                  onSpicyChange={handleSpicyPreferenceChange}
+                  addOns={[]} // Search results don't have add-ons
+                  onAddOnToggle={(itemId, addOn) => {}} // No add-ons in search
+                  specialInstructions={specialInstructions[item._id]}
+                  onInstructionsChange={handleSpecialInstructionChange}
+                />
               ))}
             </div>
           </div>
         )}
         
-        {searchTerm && isSearching && renderLoading()}
+        {searchTerm && isSearching && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold text-gray-700 mb-3">Search Results</h3>
+            {renderLoading()}
+          </div>
+        )}
         
         {searchTerm && !isSearching && filteredItems.length === 0 && (
-          <div className="mb-4 p-3 bg-gray-50 rounded-md text-center text-gray-500">
-            No items found matching "{searchTerm}"
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold text-gray-700 mb-3">Search Results</h3>
+            <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
+              No items found matching "{searchTerm}"
+            </div>
           </div>
         )}
       </div>
 
-      <div className="mb-6">
-        <h3 className="text-sm font-medium mb-3">Restaurants</h3>
-        
-        {isLoadingRestaurants ? renderLoading() : (
-          <div className="flex flex-wrap gap-4">
-            {restaurantsData?.restaurants?.map(restaurant => (
+      {/* Restaurants Section */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-700">Restaurants</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {isLoadingRestaurants ? renderLoading() : (
+            restaurantsData?.restaurants?.map(restaurant => (
               <div
                 key={restaurant._id}
                 onClick={() => handleRestaurantClick(restaurant)}
-                className={`flex items-center p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${
-                  selectedRestaurant?._id === restaurant._id ? 'bg-app-secondary text-white shadow-md' : 'bg-white hover:bg-gray-50 border'
+                className={`flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all hover:shadow-md h-[60px] ${
+                  selectedRestaurant?._id === restaurant._id 
+                    ? 'bg-gray-400 text-white shadow-md ring-2 ring-app-primary' 
+                    : 'bg-white hover:bg-gray-50 border'
                 }`}
               >
-                <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-sm">
-                  <img src={restaurant.image} alt={restaurant.name} className="w-full h-full object-cover" />
-                </div>
-                <span className="text-sm font-medium">{restaurant.name}</span>
+                {/* <div className="w-16 h-16 rounded-full overflow-hidden mb-3 border-2 border-white shadow-md">
+                  <img 
+                    src={restaurant.image || 'https://via.placeholder.com/50'} 
+                    alt={restaurant.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                </div> */}
+                <span className="text-sm font-medium text-center line-clamp-2">{restaurant.name}</span>
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </div>
 
+      {/* Branches Section */}
       {selectedRestaurant && (
-        <div className="mb-6">
-          <h3 className="text-sm font-medium mb-3">Branches</h3>
-          
-          {isLoadingSubRestaurants ? renderLoading() : (
-            <div className="flex flex-wrap gap-4">
-              {subRestaurantsData?.subRestaurants?.map(subRestaurant => (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-700">Branches</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {isLoadingSubRestaurants ? renderLoading() : (
+              subRestaurantsData?.subRestaurants?.map(subRestaurant => (
                 <div
                   key={subRestaurant._id}
                   onClick={() => handleSubRestaurantClick(subRestaurant)}
-                  className={`flex items-center p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${
-                    selectedSubRestaurant?._id === subRestaurant._id ? 'bg-app-secondary text-white shadow-md' : 'bg-white hover:bg-gray-50 border'
+                  className={`flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all hover:shadow-md h-[60px] ${
+                    selectedSubRestaurant?._id === subRestaurant._id 
+                      ? 'bg-gray-400 text-white shadow-md ring-2 ring-app-primary' 
+                      : 'bg-white hover:bg-gray-50 border'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-sm">
-                    <img src={subRestaurant.image?.[0] || 'https://via.placeholder.com/50'} alt={subRestaurant.name} className="w-full h-full object-cover" />
-                  </div>
-                  <span className="text-sm font-medium">{subRestaurant.name}</span>
+                  {/* <div className="w-16 h-16 rounded-full overflow-hidden mb-3 border-2 border-white shadow-md">
+                    <img 
+                      src={subRestaurant.image?.[0] || 'https://via.placeholder.com/50'} 
+                      alt={subRestaurant.name} 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div> */}
+                  <span className="text-sm font-medium text-center line-clamp-2">{subRestaurant.name}</span>
+                  {subRestaurant.address && (
+                    <span className="text-xs text-center mt-1 opacity-75 line-clamp-1">{subRestaurant.address}</span>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       )}
 
+      {/* Menu Categories Section */}
       {selectedSubRestaurant && (
-        <div className="mb-6">
-          <h3 className="text-sm font-medium mb-3">Menu Categories</h3>
-          
-          {isLoadingMenus ? renderLoading() : (
-            <div className="flex flex-wrap gap-4">
-              {menusData?.menu_list?.map(menu => (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-700">Menu Categories</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {isLoadingMenus ? renderLoading() : (
+              menusData?.menu_list?.map(menu => (
                 <div
                   key={menu._id}
                   onClick={() => handleMenuClick(menu)}
-                  className={`flex items-center p-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${
-                    selectedMenu?._id === menu._id ? 'bg-app-secondary text-white shadow-md' : 'bg-white hover:bg-gray-50 border'
+                  className={`flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all hover:shadow-md h-[60px] ${
+                    selectedMenu?._id === menu._id 
+                      ? 'bg-gray-400 text-white shadow-md ring-2 ring-app-primary' 
+                      : 'bg-white hover:bg-gray-50 border'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-sm">
-                    <img src={menu.image || 'https://via.placeholder.com/50'} alt={menu.menuName} className="w-full h-full object-cover" />
-                  </div>
-                  <span className="text-sm font-medium">{menu.menuName}</span>
+                  {/* <div className="w-16 h-16 rounded-full overflow-hidden mb-3 border-2 border-white shadow-md">
+                    <img 
+                      src={menu.image || 'https://via.placeholder.com/50'} 
+                      alt={menu.menuName} 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div> */}
+                  <span className="text-sm font-medium text-center line-clamp-2">{menu.menuName}</span>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       )}
 
+      {/* Menu Items Section */}
       {selectedMenu && (
-        <div>
-          <h3 className="text-sm font-medium mb-3">Menu Items</h3>
-          
-          {isLoadingMenuItems ? renderLoading() : (
-            <div className="flex flex-col gap-4">
-              {/* Selected Items Section */}
-              {selectedItems.length > 0 && (
-                <div className="border-b pb-4">
-                  <h4 className="text-sm font-medium mb-3 text-app-primary">Selected Items</h4>
-                  <div className="flex flex-wrap gap-4">
-                    {menuItemsData?.menu_items
-                      ?.filter(item => selectedItems.some(i => i._id === item._id))
-                      .map(item => (
-                        <Card 
-                          key={item._id} 
-                          className="flex-grow sm:flex-grow-0 border-app-secondary border-2"
-                        >
-                          <div 
-                            className="flex items-center p-4 cursor-pointer hover:bg-gray-50"
-                            onClick={() => handleItemClick(item)}
-                          >
-                            <input 
-                              type="checkbox"
-                              checked={true}
-                              onChange={() => handleItemClick(item)}
-                              className="mr-3"
-                            />
-                            <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-sm">
-                              <img src={item.image || 'https://via.placeholder.com/50'} alt={item.itemName} className="w-full h-full object-cover" />
-                            </div>
-                            <div className="flex-grow">
-                              <h4 className="font-medium text-sm">{item.itemName}</h4>
-                              <div className="text-sm font-bold text-app-primary">₹{item.price}</div>
-                            </div>
-                          </div>
-
-                          <CardContent className="border-t border-gray-100 bg-gray-50 p-4">
-                            <div className="mb-3">
-                              <label className="block text-sm font-medium mb-2">Spicy Preference</label>
-                              <div className="flex gap-3">
-                                {['Not Spicy', 'Normal', 'Extra Spicy'].map((option) => (
-                                  <label key={option} className="flex items-center">
-                                    <input
-                                      type="radio"
-                                      name={`spicy-${item._id}`}
-                                      value={option}
-                                      checked={spicyPreferences[item._id] === option}
-                                      onChange={() => handleSpicyPreferenceChange(item._id, option)}
-                                      className="mr-1"
-                                    />
-                                    <span className="text-sm">{option}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-
-                            {isLoadingAddOns ? (
-                              <div className="text-center py-2">Loading add-ons...</div>
-                            ) : (
-                              addOnsData?.data?.length > 0 && (
-                                <div className="mb-3">
-                                  <label className="block text-sm font-medium mb-2">Add-ons</label>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    {addOnsData.data.map(addOn => (
-                                      <div key={addOn._id} className="flex items-center justify-between p-2 bg-white rounded border">
-                                        <label className="flex items-center">
-                                          <input
-                                            type="checkbox"
-                                            checked={selectedAddOns[item._id]?.some(a => a._id === addOn._id) || false}
-                                            onChange={() => handleAddOnToggle(item._id, addOn)}
-                                            className="mr-2"
-                                          />
-                                          <span className="text-sm">{addOn.itemName}</span>
-                                        </label>
-                                        <span className="text-sm text-app-primary font-medium">₹{addOn.price}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )
-                            )}
-
-                            <div>
-                              <label className="block text-sm font-medium mb-2">Special Instructions</label>
-                              <textarea
-                                placeholder="Any special instructions..."
-                                value={specialInstructions[item._id] || ''}
-                                onChange={(e) => handleSpecialInstructionChange(item._id, e.target.value)}
-                                className="w-full px-3 py-2 border rounded text-sm"
-                                rows="2"
-                              />
-                            </div>
-
-                            <button
-                              onClick={() => handleAddToCart(item)}
-                              className="w-full mt-4 bg-app-primary text-black py-2 rounded-md text-sm font-medium hover:bg-app-primary/90 transition-colors"
-                            >
-                              Add to Cart
-                            </button>
-                          </CardContent>
-                        </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Unselected Items Section */}
-              <div className="flex flex-wrap gap-4">
-                {menuItemsData?.menu_items
-                  ?.filter(item => !selectedItems.some(i => i._id === item._id))
-                  .map(item => (
-                    <Card 
-                      key={item._id} 
-                      className="flex-grow sm:flex-grow-0 border h-[72px]"
-                    >
-                      <div 
-                        className="flex items-center p-4 cursor-pointer hover:bg-gray-50 h-full"
-                        onClick={() => handleItemClick(item)}
-                      >
-                        <input 
-                          type="checkbox"
-                          checked={false}
-                          onChange={() => handleItemClick(item)}
-                          className="mr-3"
-                        />
-                        <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-sm">
-                          <img src={item.image || 'https://via.placeholder.com/50'} alt={item.itemName} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-grow">
-                          <h4 className="font-medium text-sm">{item.itemName}</h4>
-                          <div className="text-sm font-bold text-app-primary">₹{item.price}</div>
-                        </div>
-                      </div>
-                    </Card>
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-700">Menu Items</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {isLoadingMenuItems ? renderLoading() : (
+              menuItemsData?.menu_items?.map(item => (
+                <MenuItemCard
+                  key={item._id}
+                  item={item}
+                  isSelected={selectedItems.some(i => i._id === item._id)}
+                  onSelect={handleItemClick}
+                  onAddToCart={handleAddToCart}
+                  spicyPreferences={spicyPreferences[item._id]}
+                  onSpicyChange={handleSpicyPreferenceChange}
+                  addOns={addOnsData?.data || []}
+                  onAddOnToggle={(itemId, addOn) => 
+                    selectedAddOns[itemId]?.some(a => a._id === addOn._id)
+                  }
+                  specialInstructions={specialInstructions[item._id]}
+                  onInstructionsChange={handleSpecialInstructionChange}
+                />
+              ))
+            )}
+          </div>
         </div>
       )}
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #888;
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #555;
+        }
+      `}</style>
     </div>
   );
 };
