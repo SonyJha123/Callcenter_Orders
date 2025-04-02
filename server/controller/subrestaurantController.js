@@ -221,3 +221,32 @@ export const searchWithinSubRestaurant = async (req, res, next) => {
 
 
 
+export const getSubrestaurantByLocation = async (req, res, next) => {
+  try {
+    const { keyword } = req.query;
+
+    if (!keyword) {
+      return res.status(400).json({ error: "Missing 'keyword' query parameter" });
+    }
+
+    const trimmedKeyword = keyword.trim();
+
+    const subrestaurants = await subrestaurantModel.find({
+      $or: [
+        { "location.city": { $regex: trimmedKeyword, $options: "i" } },
+        { "location.state": { $regex: trimmedKeyword, $options: "i" } },
+        { "location.country": { $regex: trimmedKeyword, $options: "i" } },
+        { "location.address": { $regex: trimmedKeyword, $options: "i" } },
+        { "location.zipCode": { $regex: trimmedKeyword, $options: "i" } }
+      ]
+    });
+
+    if (subrestaurants.length > 0) {
+      return res.status(200).json({ success: true, subrestaurants });
+    } else {
+      return res.status(404).json({ message: "No subrestaurants found for this location" });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
