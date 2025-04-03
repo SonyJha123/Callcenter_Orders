@@ -12,7 +12,7 @@ export const createOrder = async (req, res, next) => {
         }
 
         for (const item of items) {
-            if (!item.item_id || !item.quantity || !item.price) {
+            if (!item.item_id || !item.quantity ) {
                 return res.status(400).json({
                     status: 400,
                     message: "Invalid payload: each item must have item_id, quantity, and price"
