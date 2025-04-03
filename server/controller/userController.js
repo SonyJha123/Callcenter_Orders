@@ -51,7 +51,7 @@ export const getUserByPhone = async (req, res, next) => {
             });
         }
 
-        let orders = await orderModel.find({ user_id: user._id });
+        let orders = await orderModel.find({ user_id: user._id }).populate("items.item_id");
 
         return res.status(200).json({
             status: 200,

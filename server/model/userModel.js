@@ -10,16 +10,16 @@ const userschema = new mongoose.Schema({
    phone:{
         type: Number,
         required: true,
-        unique: true,
-        minlength:10,
+        unique: false,
     },
+
     
     location: {
-        address: { type: String, required: true },
-        city: { type: String, required: true },
-        state: { type: String, required: true },
-        country: { type: String, required: true },
-        zipCode: { type: String, required: true },
+        address: { type: String, required: false },
+        city: { type: String, required: false },
+        state: { type: String, required: false },
+        country: { type: String, required: false },
+        zipCode: { type: String, required: false },
         
       },
 
