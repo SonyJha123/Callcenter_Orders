@@ -1,16 +1,13 @@
 import express from "express";
-import { createMenu,getMenuById,getMenuListBySubRestaurantId, searchWithinMenu } from "../controller/menuController.js";
-import { uploadSingleImage } from "../middlewares/multer.js";
+import { createMenu,getMenuById,getMenuList } from "../controller/menuController.js";
 
 
 const router = express.Router();
 
 
-router.post("/:subRestaurant_id",uploadSingleImage, createMenu)
-router.get("/menulist/:subRestaurant_id",getMenuListBySubRestaurantId)
+router.post("/",createMenu)
+router.get("/menulist/",getMenuList)
 router.get("/byid/:menuid",getMenuById)
-
-router.get("/withinmenu/:menuid",searchWithinMenu)
 
 
 

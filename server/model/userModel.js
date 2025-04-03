@@ -4,12 +4,12 @@ import mongoose from "mongoose";
 const userschema = new mongoose.Schema({
     name:{
         type: String,
-        require: true,
+        required: true,
         minlength:3
     },
    phone:{
         type: Number,
-        require: true,
+        required: true,
         unique: true,
         minlength:10,
     },

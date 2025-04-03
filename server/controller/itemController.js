@@ -173,3 +173,16 @@ export const getSuggestionOfRelatedItem = async(req,res,next) => {
     }
 }
 
+export const getAllItems = async (req, res, next) => {
+    try {
+        let items = await itemModel.find({}, { createdAt: 0, updatedAt: 0 })
+        
+        return res.status(200).json({
+            status: "success",
+            items
+        })
+    } catch (error) {
+        next(error)
+
+    }
+}
