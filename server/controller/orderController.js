@@ -2,7 +2,7 @@ import orderModel from "../model/orderModel.js";
 
 export const createOrder = async (req, res, next) => {
     try {
-        const { items, subtotal, tax,delivery_fees,discount,promo_discount,remaining_balance,additional_charge,total,payment_method,delivery_mode,customer_name,customer_phone,customer_email,pickup_address,delivery_address,description } = req.body;
+        const { items, subtotal, tax,delivery_fees,discount,promo_discount,remaining_balance,additional_charge,total,payment_method,delivery_mode,user_id,customer_name,customer_phone,customer_email,pickup_address,delivery_address,description } = req.body;
 
         if (!Array.isArray(items) || items.length === 0) {
             return res.status(400).json({
@@ -33,6 +33,7 @@ export const createOrder = async (req, res, next) => {
             total,
             payment_method,
             delivery_mode,
+            user_id,
             customer_name,
             customer_phone,
             customer_email,
