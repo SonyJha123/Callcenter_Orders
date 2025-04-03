@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
+import { useLazyGetUserByPhoneQuery } from '../redux/services/userApi';
 
 const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone number", buttonText = "Search", validateInput, searchType = "customer", value, onChange }) => {
   const [searchInput, setSearchInput] = useState('');
   const { toast } = useToast();
+  
+  // RTK Query hook for customer search
+  const [getUserByPhone, { isLoading }] = useLazyGetUserByPhoneQuery();
 
   // Synchronize with external value if provided
   useEffect(() => {
@@ -34,7 +38,7 @@ const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone numbe
     }
   };
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
     
     if (searchType === "customer") {
@@ -47,41 +51,77 @@ const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone numbe
         return;
       }
       
-      // Mock customer data with order history for existing customers
-      const mockCustomerData = {
-        id: Math.floor(Math.random() * 1000),
-        name: searchInput === "9876543210" ? "John Doe" : "",
-        phone: searchInput,
-        address: searchInput === "9876543210" ? "123 Main St, Anytown" : "",
-        previousOrders: searchInput === "9876543210" ? [
-          { 
-            id: 1001, 
-            items: ["Cheese Burger", "Fries", "Coke"], 
-            total: 250,
-            date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days ago
-          },
-          { 
-            id: 1002, 
-            items: ["Pepperoni Pizza", "Garlic Bread", "Sprite"], 
-            total: 350,
-            date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString() // 15 days ago
-          },
-          { 
-            id: 1003, 
-            items: ["Chicken Wings", "Onion Rings", "Iced Tea"], 
-            total: 280,
-            date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
-          }
-        ] : []
-      };
-      
-      onCustomerSearch(mockCustomerData);
-      toast({
-        title: mockCustomerData.name ? "Customer Found!" : "New Customer",
-        description: mockCustomerData.name 
-          ? `Welcome back, ${mockCustomerData.name}. ${mockCustomerData.previousOrders.length} previous orders found.`
-          : "Please enter customer details",
-      });
+      try {
+        // Use RTK Query to search for customer by phone number
+        const result = await getUserByPhone(searchInput).unwrap();
+        console.log('Customer search result:', result);
+        
+        if (result && result.status === 200 && result.user) {
+          // Customer found
+          const user = result.user;
+          const userData = {
+            _id: user._id,
+            name: user.name,
+            phone: user.phone.toString(),
+            address: user.location?.address || '',
+            email: user.email || '',
+            // Format location data
+            city: user.location?.city || '',
+            state: user.location?.state || '',
+            country: user.location?.country || '',
+            zipCode: user.location?.zipCode || '',
+            // Order history
+            previousOrders: result.orders || [],
+            // Flag as existing customer
+            isExistingCustomer: true
+          };
+          
+          console.log('Formatted customer data:', userData);
+          onCustomerSearch(userData);
+          
+          toast({
+            title: "Customer Found!",
+            description: `Welcome back, ${userData.name}. ${userData.previousOrders.length} previous order(s) found.`,
+          });
+        } else {
+          // No customer found, create new customer object with just the phone
+          const newCustomer = {
+            phone: searchInput,
+            name: '',
+            address: '',
+            email: '',
+            previousOrders: [],
+            isExistingCustomer: false
+          };
+          
+          onCustomerSearch(newCustomer);
+          
+          toast({
+            title: "New Customer",
+            description: "Please enter customer details",
+          });
+        }
+      } catch (err) {
+        console.error('Error searching for customer:', err);
+        
+        // Still create a new customer object - error shouldn't block workflow
+        const newCustomer = {
+          phone: searchInput,
+          name: '',
+          address: '',
+          email: '',
+          previousOrders: [],
+          isExistingCustomer: false
+        };
+        
+        onCustomerSearch(newCustomer);
+        
+        // More user-friendly message when API error occurs
+        toast({
+          title: "New Customer",
+          description: "Creating new customer entry",
+        });
+      }
     } else {
       // For menu searches, just pass the input value
       onCustomerSearch(searchInput);
@@ -107,7 +147,11 @@ const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone numbe
           type="submit" 
           variant="default"
           className="shadow-sm"
+          disabled={isLoading}
         >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : null}
           {buttonText}
         </Button>
       </form>

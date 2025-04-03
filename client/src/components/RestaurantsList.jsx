@@ -185,9 +185,12 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
     { skip: selectedItems.length === 0 }
   );
 
-  // Add console logs for debugging
+  // Update the debug logs to better understand the API response structure
   useEffect(() => {
     console.log('Restaurants Data:', restaurantsData);
+    if (restaurantsData) {
+      console.log('Restaurants Array:', restaurantsData.restaurants || restaurantsData.data?.restaurants || []);
+    }
     console.log('Loading State:', isLoadingRestaurants);
     console.log('Error:', restaurantsError);
   }, [restaurantsData, isLoadingRestaurants, restaurantsError]);
@@ -534,30 +537,33 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
       {/* Restaurants Section */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700">Restaurants</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {isLoadingRestaurants ? renderLoading() : (
-            restaurantsData?.restaurants?.map(restaurant => (
+        {isLoadingRestaurants ? (
+          renderLoading()
+        ) : restaurantsError ? (
+          <div className="p-4 bg-red-50 rounded-lg text-center text-red-500">
+            Error loading restaurants. Please try again.
+          </div>
+        ) : restaurantsData && (restaurantsData.restaurants || restaurantsData.data?.restaurants || []).length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {(restaurantsData.restaurants || restaurantsData.data?.restaurants || []).map(restaurant => (
               <div
                 key={restaurant._id}
                 onClick={() => handleRestaurantClick(restaurant)}
-                className={`flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all hover:shadow-md h-[60px] ${
+                className={`flex flex-col items-center p-3 rounded-lg cursor-pointer transition-all hover:shadow-md h-[60px] ${
                   selectedRestaurant?._id === restaurant._id 
                     ? 'bg-gray-400 text-white shadow-md ring-2 ring-app-primary' 
                     : 'bg-white hover:bg-gray-50 border'
                 }`}
               >
-                {/* <div className="w-16 h-16 rounded-full overflow-hidden mb-3 border-2 border-white shadow-md">
-                  <img 
-                    src={restaurant.image || 'https://via.placeholder.com/50'} 
-                    alt={restaurant.name} 
-                    className="w-full h-full object-cover" 
-                  />
-                </div> */}
                 <span className="text-sm font-medium text-center line-clamp-2">{restaurant.name}</span>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
+            No restaurants found. Please check your connection or try again later.
+          </div>
+        )}
       </div>
 
       {/* Branches Section */}

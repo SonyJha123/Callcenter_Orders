@@ -52,6 +52,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
   const [additionalCharge, setAdditionalCharge] = useState(57);
   const [remainingBalance, setRemainingBalance] = useState(94);
   const [agentFields, setAgentFields] = useState({
+    user_id: '',
     customer_name: '',
     customer_phone: '',
     customer_email: '',
@@ -112,6 +113,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
     
     // Reset all form fields
     setAgentFields({
+      user_id: '',
       customer_name: '',
       customer_phone: '',
       customer_email: '',
@@ -203,6 +205,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
         total,
         payment_method: paymentMethod,
         delivery_mode: deliveryMode,
+        user_id: agentFields.user_id || '',
         customer_name: agentFields.customer_name,
         customer_phone: agentFields.customer_phone,
         customer_email: agentFields.customer_email || '',
@@ -248,6 +251,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
     if (customerData) {
       setAgentFields(prev => ({
         ...prev,
+        user_id: customerData._id || '',
         customer_name: customerData.name || prev.customer_name,
         customer_phone: customerData.phone || prev.customer_phone,
         customer_email: customerData.email || prev.customer_email,
@@ -276,12 +280,12 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                   <div className="flex items-center gap-3">
                     <img
                       src={item.image || 'https://via.placeholder.com/40'}
-                      alt={item.itemName}
+                      alt={item.itemName || item.name}
                       className="w-10 h-10 rounded-full object-cover"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start">
-                        <p className="font-medium text-sm">{item.itemName}</p>
+                        <p className="font-medium text-sm">{item.itemName || item.name}</p>
                         <p className="text-sm font-medium text-app-primary">₹{(item.basePrice || item.price).toFixed(2)}</p>
                       </div>
                       

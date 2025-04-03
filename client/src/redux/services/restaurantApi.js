@@ -8,6 +8,21 @@ export const restaurantApi = createApi({
   endpoints: (builder) => ({
     getAllRestaurants: builder.query({
       query: ({ page = 1, limit = 10 }) => `/restaurants/allrestaurants?page=${page}&limit=${limit}`,
+      transformResponse: (response) => {
+        console.log('Raw restaurant API response:', response);
+        if (response.restaurants) {
+          return response;
+        } else if (response.data && response.data.restaurants) {
+          return response.data;
+        } else if (Array.isArray(response)) {
+          return { restaurants: response };
+        }
+        return { restaurants: [] };
+      },
+      transformErrorResponse: (error) => {
+        console.error('Restaurant API error:', error);
+        return error;
+      }
     }),
     getSubRestaurants: builder.query({
       query: ({ restaurantId, page = 1, limit = 10 }) => 

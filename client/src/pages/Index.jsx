@@ -114,6 +114,7 @@ const Index = () => {
                     customerData={customerData} 
                     onCustomerInfoUpdate={handleCustomerInfoUpdate}
                     onCustomerDataChange={handleCustomerDataChange}
+                    onAddToCart={handleAddToCart}
                   />
                 </div>
               )}
