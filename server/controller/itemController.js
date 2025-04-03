@@ -186,3 +186,31 @@ export const getAllItems = async (req, res, next) => {
 
     }
 }
+export const getItemByKeyWord = async (req, res, next) => {
+    try {
+        let keyword = req.query.keyword;
+
+        if (!keyword) {
+            return res.status(400).json({ message: "Keyword is required" });
+        }
+
+        let items = await itemModel.find(
+            {
+                $or: [
+                    { itemName: { $regex: keyword, $options: "i" } },
+                    { description: { $regex: keyword, $options: "i" } },
+                    { ingredients: { $regex: keyword, $options: "i" } }
+                ]
+            },
+            { createdAt: 0, updatedAt: 0 } 
+        );
+
+        return res.status(200).json({ status: "success", data: items });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+
