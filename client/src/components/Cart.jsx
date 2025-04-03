@@ -45,7 +45,7 @@ const validationSchema = Yup.object().shape({
 
 const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrderSuccess }) => {
   const [couponCode, setCouponCode] = useState('CULPA SED IN REPELLE');
-  const [paymentMethod, setPaymentMethod] = useState('UPI');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [deliveryMode, setDeliveryMode] = useState('TAKEAWAY');
   const [additionalNotes, setAdditionalNotes] = useState('Dolores vero ullamco');
   const [promoDiscount, setPromoDiscount] = useState(94);
@@ -141,14 +141,48 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-    if (cartItems.length === 0) {
-      toast({
-        title: "Empty Cart",
-        description: "Please add items to your cart before placing an order.",
-        variant: "destructive",
-      });
-      return;
-    }
+      // Validate required fields
+      const newErrors = {};
+      
+      if (cartItems.length === 0) {
+        toast({
+          title: "Empty Cart",
+          description: "Please add items to your cart before placing an order.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!agentFields.customer_name) {
+        newErrors.customer_name = 'Customer name is required';
+      }
+      
+      if (!agentFields.customer_phone) {
+        newErrors.customer_phone = 'Phone number is required';
+      } else if (!/^\d{10}$/.test(agentFields.customer_phone)) {
+        newErrors.customer_phone = 'Please enter a valid 10-digit phone number';
+      }
+      
+      if (deliveryMode === 'TAKEAWAY' && !agentFields.pickup_address) {
+        newErrors.pickup_address = 'Pickup address is required';
+      }
+      
+      if (deliveryMode === 'HOME_DELIVERY' && !agentFields.delivery_address) {
+        newErrors.delivery_address = 'Delivery address is required';
+      }
+      
+      // If there are validation errors, show them and stop submission
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        for (const error of Object.values(newErrors)) {
+          toast({
+            title: "Validation Error",
+            description: error,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
 
       const orderData = {
         items: cartItems.map(item => ({
@@ -167,13 +201,13 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
         remaining_balance: remainingBalance || 0,
         additional_charge: additionalCharge || 0,
         total,
-        payment_method: values.payment_method,
-        delivery_mode: values.delivery_mode,
-        customer_name: values.customer_name,
-        customer_phone: values.customer_phone,
-        customer_email: values.customer_email || '',
-        pickup_address: values.delivery_mode === 'TAKEAWAY' ? values.pickup_address : '',
-        delivery_address: values.delivery_mode === 'HOME_DELIVERY' ? values.delivery_address : '',
+        payment_method: paymentMethod,
+        delivery_mode: deliveryMode,
+        customer_name: agentFields.customer_name,
+        customer_phone: agentFields.customer_phone,
+        customer_email: agentFields.customer_email || '',
+        pickup_address: deliveryMode === 'TAKEAWAY' ? agentFields.pickup_address : '',
+        delivery_address: deliveryMode === 'HOME_DELIVERY' ? agentFields.delivery_address : '',
         description: additionalNotes || ''
       };
 
@@ -365,31 +399,59 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
         )}
 
         {/* Customer Information */}
-            <div className="space-y-3">
+        <div className="space-y-3">
           <h3 className="font-medium text-gray-700">Customer Information</h3>
           <div className="grid gap-3">
-            <Input
-              name="customer_name"
-              placeholder="Full Name"
-                    value={agentFields.customer_name}
-              onChange={(e) => setAgentFields({ ...agentFields, customer_name: e.target.value })}
-            />
-            <Input
-              name="customer_phone"
-                    type="tel"
-                    placeholder="Phone Number"
-                    value={agentFields.customer_phone}
-              onChange={(e) => setAgentFields({ ...agentFields, customer_phone: e.target.value })}
-            />
-            <Input
-              name="customer_email"
-                    type="email"
-                    placeholder="Email Address"
-                    value={agentFields.customer_email}
-              onChange={(e) => setAgentFields({ ...agentFields, customer_email: e.target.value })}
-                  />
-                </div>
-              </div>
+            <div>
+              <Label htmlFor="customer_name" className="text-sm font-medium text-gray-700 mb-1 block">Full Name</Label>
+              <Input
+                id="customer_name"
+                name="customer_name"
+                placeholder="Full Name"
+                value={agentFields.customer_name}
+                onChange={(e) => {
+                  setAgentFields({ ...agentFields, customer_name: e.target.value });
+                  if (e.target.value) {
+                    setErrors(prev => ({ ...prev, customer_name: '' }));
+                  }
+                }}
+                className={errors.customer_name ? 'border-red-500 focus:ring-red-500' : ''}
+              />
+              {errors.customer_name && <p className="text-red-500 text-xs mt-1">{errors.customer_name}</p>}
+            </div>
+            
+            <div>
+              <Label htmlFor="customer_phone" className="text-sm font-medium text-gray-700 mb-1 block">Phone Number</Label>
+              <Input
+                id="customer_phone"
+                name="customer_phone"
+                type="tel"
+                placeholder="Phone Number"
+                value={agentFields.customer_phone}
+                onChange={(e) => {
+                  setAgentFields({ ...agentFields, customer_phone: e.target.value });
+                  if (e.target.value && /^\d{10}$/.test(e.target.value)) {
+                    setErrors(prev => ({ ...prev, customer_phone: '' }));
+                  }
+                }}
+                className={errors.customer_phone ? 'border-red-500 focus:ring-red-500' : ''}
+              />
+              {errors.customer_phone && <p className="text-red-500 text-xs mt-1">{errors.customer_phone}</p>}
+            </div>
+            
+            <div>
+              <Label htmlFor="customer_email" className="text-sm font-medium text-gray-700 mb-1 block">Email Address (Optional)</Label>
+              <Input
+                id="customer_email"
+                name="customer_email"
+                type="email"
+                placeholder="Email Address"
+                value={agentFields.customer_email}
+                onChange={(e) => setAgentFields({ ...agentFields, customer_email: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
 
         {/* Delivery Options */}
         <div className="space-y-3">
@@ -399,11 +461,12 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
             value={deliveryMode}
             onValueChange={(value) => {
               setDeliveryMode(value);
-              if (value === 'TAKEAWAY') {
-                setAgentFields(prev => ({ ...prev, pickup_address: '', delivery_address: '' }));
-              } else {
-                setAgentFields(prev => ({ ...prev, pickup_address: '', delivery_address: '' }));
-              }
+              // Clear errors when changing delivery mode
+              setErrors(prev => ({
+                ...prev,
+                pickup_address: '',
+                delivery_address: ''
+              }));
             }}
             className="grid gap-2"
           >
@@ -413,37 +476,57 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="HOME_DELIVERY" id="delivery" />
-              <Label htmlFor="delivery">Delivery</Label>
-              </div>
+              <Label htmlFor="delivery">Home Delivery</Label>
+            </div>
           </RadioGroup>
 
-              {deliveryMode === 'TAKEAWAY' && (
-            <Textarea
-              name="pickup_address"
-              placeholder="Pickup Address"
-                    value={agentFields.pickup_address}
-              onChange={(e) => setAgentFields({ ...agentFields, pickup_address: e.target.value })}
-              className="h-20"
-                  />
-              )}
-
-              {deliveryMode === 'HOME_DELIVERY' && (
-            <Textarea
-              name="delivery_address"
-              placeholder="Delivery Address"
-                    value={agentFields.delivery_address}
-              onChange={(e) => setAgentFields({ ...agentFields, delivery_address: e.target.value })}
-              className="h-20"
-                  />
+          {deliveryMode === 'TAKEAWAY' && (
+            <div className="mt-3">
+              <Label htmlFor="pickup_address" className="text-sm font-medium text-gray-700 mb-1 block">Pickup Address</Label>
+              <Textarea
+                id="pickup_address"
+                name="pickup_address"
+                placeholder="Enter pickup address"
+                value={agentFields.pickup_address}
+                onChange={(e) => {
+                  setAgentFields({ ...agentFields, pickup_address: e.target.value });
+                  if (e.target.value) {
+                    setErrors(prev => ({ ...prev, pickup_address: '' }));
+                  }
+                }}
+                className={`h-20 ${errors.pickup_address ? 'border-red-500 focus:ring-red-500' : ''}`}
+              />
+              {errors.pickup_address && <p className="text-red-500 text-xs mt-1">{errors.pickup_address}</p>}
+            </div>
           )}
-                </div>
+
+          {deliveryMode === 'HOME_DELIVERY' && (
+            <div className="mt-3">
+              <Label htmlFor="delivery_address" className="text-sm font-medium text-gray-700 mb-1 block">Delivery Address</Label>
+              <Textarea
+                id="delivery_address"
+                name="delivery_address"
+                placeholder="Enter delivery address"
+                value={agentFields.delivery_address}
+                onChange={(e) => {
+                  setAgentFields({ ...agentFields, delivery_address: e.target.value });
+                  if (e.target.value) {
+                    setErrors(prev => ({ ...prev, delivery_address: '' }));
+                  }
+                }}
+                className={`h-20 ${errors.delivery_address ? 'border-red-500 focus:ring-red-500' : ''}`}
+              />
+              {errors.delivery_address && <p className="text-red-500 text-xs mt-1">{errors.delivery_address}</p>}
+            </div>
+          )}
+        </div>
 
         {/* Payment Method */}
         <div className="space-y-3">
           <h3 className="font-medium text-gray-700">Payment Method</h3>
           <RadioGroup
             name="payment_method"
-                  value={paymentMethod}
+            value={paymentMethod}
             onValueChange={(value) => setPaymentMethod(value)}
             className="grid gap-2"
           >
@@ -460,7 +543,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
               <Label htmlFor="upi">UPI</Label>
             </div>
           </RadioGroup>
-              </div>
+        </div>
 
         {/* Special Instructions */}
         <div className="space-y-3">
@@ -480,37 +563,37 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>₹{subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span>Tax (5%)</span>
-              <span>${tax.toFixed(2)}</span>
+              <span>₹{tax.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span>Delivery Fee</span>
-              <span>${deliveryFee.toFixed(2)}</span>
+              <span>₹{deliveryFee.toFixed(2)}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-green-600">
                 <span>Discount</span>
-                <span>-${discount.toFixed(2)}</span>
+                <span>-₹{discount.toFixed(2)}</span>
               </div>
             )}
             {promoDiscount > 0 && (
               <div className="flex justify-between text-green-600">
                 <span>Promo Discount</span>
-                <span>-${promoDiscount.toFixed(2)}</span>
+                <span>-₹{promoDiscount.toFixed(2)}</span>
               </div>
             )}
             {additionalCharge > 0 && (
               <div className="flex justify-between">
                 <span>Additional Charges</span>
-                <span>${additionalCharge.toFixed(2)}</span>
+                <span>₹{additionalCharge.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between font-medium text-base pt-2 border-t">
               <span>Total</span>
-              <span>${total.toFixed(2)}</span>
+              <span>₹{total.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -521,7 +604,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
         <Button
           className="w-full"
           disabled={isOrderButtonDisabled}
-          onClick={handleSubmit}
+          onClick={() => handleSubmit({}, { setSubmitting: () => {} })}
         >
           {isCreatingOrder ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
