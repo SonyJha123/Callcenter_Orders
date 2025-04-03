@@ -1,12 +1,38 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 
-const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone number", buttonText = "Search", validateInput, searchType = "customer" }) => {
+const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone number", buttonText = "Search", validateInput, searchType = "customer", value, onChange }) => {
   const [searchInput, setSearchInput] = useState('');
   const { toast } = useToast();
+
+  // Synchronize with external value if provided
+  useEffect(() => {
+    if (value !== undefined) {
+      setSearchInput(value);
+    }
+  }, [value]);
+
+  const handleInputChange = (e) => {
+    const newValue = e.target.value;
+    setSearchInput(newValue);
+    
+    // If onChange prop is provided, call it
+    if (onChange) {
+      onChange(e);
+    }
+    
+    // If menu search and no onChange handler, do immediate search on type
+    if (searchType === "menu" && !onChange && newValue.length > 2) {
+      // Debounce search for better performance
+      const handler = setTimeout(() => {
+        onCustomerSearch(newValue);
+      }, 300);
+      
+      return () => clearTimeout(handler);
+    }
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -56,7 +82,7 @@ const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone numbe
             placeholder={placeholder}
             className="flex-grow w-full pl-10 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-app-primary shadow-sm"
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={handleInputChange}
           />
         </div>
         <Button 

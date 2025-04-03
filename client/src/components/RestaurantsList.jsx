@@ -19,7 +19,7 @@ const SPICY_LEVELS = [
   { id: 'extra-spicy', label: 'Extra Spicy', value: 'Extra Spicy' }
 ];
 
-const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreferences, onSpicyChange, addOns, onAddOnToggle, specialInstructions, onInstructionsChange }) => {
+const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreferences, onSpicyChange, addOns, onAddOnToggle, onAddOnToggleChange, specialInstructions, onInstructionsChange }) => {
   return (
     <div
       className={`${
@@ -107,7 +107,7 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
                         <input
                           type="checkbox"
                           checked={onAddOnToggle(item._id, addOn)}
-                          onChange={() => onAddOnToggle(item._id, addOn)}
+                          onChange={() => onAddOnToggleChange(item._id, addOn)}
                           className="mr-2 text-app-primary rounded border-gray-300 focus:ring-app-primary"
                         />
                         <span className="text-sm">{addOn.itemName}</span>
@@ -195,6 +195,7 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   // Update filtered items when search results arrive
   useEffect(() => {
     if (searchData?.data) {
+      console.log('Search results:', searchData.data);
       const allResults = [
         ...(searchData.data.item || []).map(item => ({
           ...item,
@@ -224,6 +225,7 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   };
 
   const handleSearch = (term) => {
+    console.log('Searching for:', term);
     setSearchTerm(term);
     if (!term) {
       setFilteredItems([]);
@@ -267,43 +269,37 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
     }
   };
 
-  const handleAddOnToggle = (itemId, addOn) => {
-    setSelectedAddOns(prev => {
-      const currentAddOns = prev[itemId] || [];
-      const exists = currentAddOns.some(a => a._id === addOn._id);
-      
-      if (exists) {
-        return {
-          ...prev,
-          [itemId]: currentAddOns.filter(a => a._id !== addOn._id)
-        };
-      } else {
-        return {
-          ...prev,
-          [itemId]: [...currentAddOns, addOn]
-        };
-      }
-    });
-  };
-
   const handleSpicyPreferenceChange = (itemId, value) => {
+    console.log('Setting spicy preference:', itemId, value);
+    
     setSpicyPreferences(prev => {
-      const currentPreferences = prev[itemId] || [];
-      const exists = currentPreferences.includes(value);
-      
-      if (exists) {
-        // Remove the preference if it already exists
+      // Initialize if not exists
+      if (!prev[itemId]) {
         return {
           ...prev,
-          [itemId]: currentPreferences.filter(pref => pref !== value)
-        };
-      } else {
-        // Add the new preference
-        return {
-          ...prev,
-          [itemId]: [...currentPreferences, value]
+          [itemId]: [value]
         };
       }
+      
+      const currentPrefs = [...prev[itemId]];
+      const index = currentPrefs.indexOf(value);
+      
+      // Toggle the preference
+      if (index > -1) {
+        currentPrefs.splice(index, 1);
+      } else {
+        currentPrefs.push(value);
+      }
+      
+      // If "Normal" is selected, ensure it's recorded correctly
+      if (value === 'Normal' && index === -1) {
+        console.log('Normal spice level selected');
+      }
+      
+      return {
+        ...prev,
+        [itemId]: currentPrefs
+      };
     });
   };
 
@@ -314,9 +310,51 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
     }));
   };
 
+  // Check if an add-on is selected for an item (without changing state)
+  const isAddOnSelected = (itemId, addOn) => {
+    return selectedAddOns[itemId]?.some(a => a._id === addOn._id) || false;
+  };
+
+  // Handle add-on toggle
+  const handleAddOnToggleChange = (itemId, addOn) => {
+    if (!selectedAddOns[itemId]) {
+      setSelectedAddOns(prev => ({
+        ...prev,
+        [itemId]: [addOn]
+      }));
+    } else {
+      const isSelected = selectedAddOns[itemId].some(a => a._id === addOn._id);
+      setSelectedAddOns(prev => {
+        const updatedAddOns = { ...prev };
+        if (isSelected) {
+          updatedAddOns[itemId] = updatedAddOns[itemId].filter(a => a._id !== addOn._id);
+        } else {
+          updatedAddOns[itemId] = [...updatedAddOns[itemId], addOn];
+        }
+        return updatedAddOns;
+      });
+    }
+  };
+
+  // Fetch add-ons for search results when they are displayed
+  useEffect(() => {
+    if (filteredItems.length > 0 && searchTerm) {
+      // Clear previous selections for search results
+      filteredItems.forEach(item => {
+        if (!spicyPreferences[item._id]) {
+          setSpicyPreferences(prev => ({
+            ...prev,
+            [item._id]: []
+          }));
+        }
+      });
+    }
+  }, [filteredItems, searchTerm]);
+
   const handleAddToCart = (item) => {
     const selectedItemAddOns = selectedAddOns[item._id] || [];
-    const itemSpicyPreferences = spicyPreferences[item._id] || [];
+    // Use item.spicyPreferences if provided directly (for search results)
+    const itemSpicyPreferences = item.spicyPreferences || spicyPreferences[item._id] || [];
     const specialInstruction = specialInstructions[item._id] || '';
 
     // Validate at least one spicy preference is selected
@@ -342,6 +380,8 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
       quantity: 1,
       basePrice: parseFloat(item.price) // Store the base price separately
     };
+
+    console.log('Adding to cart:', itemToAdd);
 
     // Call the parent component's handler with the item and its configuration
     onMenuItemSelect(itemToAdd);
@@ -399,19 +439,76 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
             <h3 className="text-lg font-semibold text-gray-700 mb-3">Search Results</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {filteredItems.map(item => (
-                <MenuItemCard
+                <div
                   key={item._id}
-                  item={item}
-                  isSelected={selectedItems.some(i => i._id === item._id)}
-                  onSelect={handleItemClick}
-                  onAddToCart={handleAddToCart}
-                  spicyPreferences={spicyPreferences[item._id]}
-                  onSpicyChange={handleSpicyPreferenceChange}
-                  addOns={[]} // Search results don't have add-ons
-                  onAddOnToggle={(itemId, addOn) => {}} // No add-ons in search
-                  specialInstructions={specialInstructions[item._id]}
-                  onInstructionsChange={handleSpecialInstructionChange}
-                />
+                  className="relative group"
+                >
+                  <div className="flex flex-col rounded-lg transition-all duration-200 bg-white hover:bg-gray-50 border hover:shadow-md">
+                    {/* Item Header - Always Visible */}
+                    <div 
+                      className="flex flex-col items-center p-4 cursor-pointer"
+                    >
+                      <div className="relative w-16 h-16 mb-3">
+                        <img 
+                          src={item.image || 'https://via.placeholder.com/50'} 
+                          alt={item.itemName} 
+                          className="w-full h-full rounded-full object-cover border-2 border-white shadow-md transition-shadow" 
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-center line-clamp-2">{item.itemName}</span>
+                      <span className="text-sm font-bold mt-2 text-app-primary">₹{item.price}</span>
+                      
+                      {/* Spicy Level Selection */}
+                      <div className="w-full mt-2">
+                        <label className="block text-xs font-medium mb-2 text-gray-600">Select Spicy Level:</label>
+                        <select 
+                          className="w-full text-sm p-1 border rounded"
+                          value={spicyPreferences[item._id]?.[0] || ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value) {
+                              setSpicyPreferences(prev => ({
+                                ...prev,
+                                [item._id]: [value]
+                              }));
+                            }
+                          }}
+                        >
+                          <option value="">Select spice level</option>
+                          {SPICY_LEVELS.map(level => (
+                            <option key={level.id} value={level.value}>{level.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      {/* Quick Add to Cart Button */}
+                      <button
+                        className="w-full bg-app-primary text-white font-medium py-2 px-4 rounded-lg mt-3 hover:bg-app-primary/90"
+                        onClick={() => {
+                          // Set spicy level to Normal if none selected
+                          if (!spicyPreferences[item._id] || spicyPreferences[item._id].length === 0) {
+                            setSpicyPreferences(prev => ({
+                              ...prev,
+                              [item._id]: ['Normal']
+                            }));
+                            
+                            // Add timeout to ensure state is updated before adding to cart
+                            setTimeout(() => {
+                              handleAddToCart({
+                                ...item,
+                                spicyPreferences: ['Normal']
+                              });
+                            }, 10);
+                          } else {
+                            handleAddToCart(item);
+                          }
+                        }}
+                      >
+                        Add to Cart
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -544,9 +641,8 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
                   spicyPreferences={spicyPreferences[item._id]}
                   onSpicyChange={handleSpicyPreferenceChange}
                   addOns={addOnsData?.data || []}
-                  onAddOnToggle={(itemId, addOn) => 
-                    selectedAddOns[itemId]?.some(a => a._id === addOn._id)
-                  }
+                  onAddOnToggle={isAddOnSelected}
+                  onAddOnToggleChange={handleAddOnToggleChange}
                   specialInstructions={specialInstructions[item._id]}
                   onInstructionsChange={handleSpecialInstructionChange}
                 />
