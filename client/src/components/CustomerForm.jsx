@@ -4,30 +4,6 @@ import * as Yup from 'yup';
 import { MapPin, Clock, ShoppingBag, AlertCircle, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-// Mock data for Indian cities and states
-const INDIA_CITIES = [
-  { name: "Mohali", state: "Punjab", lat: 30.7305, lng: 76.6942 },
-  { name: "Mumbai", state: "Maharashtra", lat: 19.0760, lng: 72.8777 },
-  { name: "Delhi", state: "Delhi", lat: 28.7041, lng: 77.1025 },
-  { name: "Bangalore", state: "Karnataka", lat: 12.9716, lng: 77.5946 },
-  { name: "Chennai", state: "Tamil Nadu", lat: 13.0827, lng: 80.2707 },
-  { name: "Kolkata", state: "West Bengal", lat: 22.5726, lng: 88.3639 },
-  { name: "Hyderabad", state: "Telangana", lat: 17.3850, lng: 78.4867 },
-  { name: "Pune", state: "Maharashtra", lat: 18.5204, lng: 73.8567 },
-  { name: "Jaipur", state: "Rajasthan", lat: 26.9124, lng: 75.7873 },
-  { name: "Lucknow", state: "Uttar Pradesh", lat: 26.8467, lng: 80.9462 },
-  { name: "Ahmedabad", state: "Gujarat", lat: 23.0225, lng: 72.5714 },
-  { name: "Chandigarh", state: "Punjab", lat: 30.7333, lng: 76.7794 },
-  { name: "Indore", state: "Madhya Pradesh", lat: 22.7196, lng: 75.8577 },
-  { name: "Coimbatore", state: "Tamil Nadu", lat: 11.0168, lng: 76.9558 },
-  { name: "Kochi", state: "Kerala", lat: 9.9312, lng: 76.2673 },
-  { name: "Nagpur", state: "Maharashtra", lat: 21.1458, lng: 79.0882 },
-  { name: "Bhopal", state: "Madhya Pradesh", lat: 23.2599, lng: 77.4126 },
-  { name: "Mysore", state: "Karnataka", lat: 12.2958, lng: 76.6394 },
-  { name: "Surat", state: "Gujarat", lat: 21.1702, lng: 72.8311 },
-  { name: "Visakhapatnam", state: "Andhra Pradesh", lat: 17.6868, lng: 83.2185 }
-];
-
 const validationSchema = Yup.object().shape({
   name: Yup.string()
     .required('Customer name is required'),
@@ -47,6 +23,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [suggestedCities, setSuggestedCities] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   
   const initialValues = {
     name: customerData?.name || '',
@@ -64,40 +41,61 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     }
   }, [customerData]);
 
-  // Effect for address search/suggestions
+  // Effect for address search/suggestions using API
   useEffect(() => {
-    if (searchTerm && searchTerm.length >= 2) {
-      // Filter cities based on search term
-      const filteredCities = INDIA_CITIES.filter(city =>
-        city.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setSuggestedCities(filteredCities.slice(0, 5)); // Limit to 5 suggestions
-    } else {
-      setSuggestedCities([]);
-    }
+    const searchCities = async () => {
+      if (searchTerm && searchTerm.length >= 2) {
+        setIsSearching(true);
+        try {
+          // Using OpenStreetMap Nominatim API for geocoding (free, no API key required)
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchTerm)}&countrycodes=in&limit=8&addressdetails=1`,
+            { headers: { 'Accept-Language': 'en-US,en' } }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Extract unique cities from results
+            const cities = data.reduce((acc, location) => {
+              const address = location.address;
+              const cityName = address.city || address.town || address.village || address.hamlet || address.municipality;
+              const stateName = address.state;
+              
+              if (cityName && stateName && !acc.some(city => city.name === cityName)) {
+                acc.push({
+                  name: cityName,
+                  state: stateName,
+                  displayName: location.display_name
+                });
+              }
+              return acc;
+            }, []);
+            
+            setSuggestedCities(cities);
+          }
+        } catch (error) {
+          console.error('Error searching for cities:', error);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSuggestedCities([]);
+      }
+    };
+    
+    // Debounce search to avoid making too many requests
+    const timer = setTimeout(() => {
+      searchCities();
+    }, 300);
+    
+    return () => clearTimeout(timer);
   }, [searchTerm]);
 
   const handleSubmit = (values, { setSubmitting }) => {
     onCustomerInfoUpdate?.(values);
     onCustomerDataChange?.(values);
     setSubmitting(false);
-  };
-  
-  // Calculate distance between two coordinates using Haversine formula
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Radius of the earth in km
-    const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in km
-  };
-
-  const deg2rad = (deg) => {
-    return deg * (Math.PI / 180);
   };
   
   const getGeolocation = (setFieldValue = null) => {
@@ -112,30 +110,8 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           
           console.log('Geolocation coordinates:', latitude, longitude);
           
-          // Find nearest city in our database
-          let nearestCity = INDIA_CITIES[0];
-          let minDistance = calculateDistance(latitude, longitude, INDIA_CITIES[0].lat, INDIA_CITIES[0].lng);
-          
-          INDIA_CITIES.forEach(city => {
-            const distance = calculateDistance(latitude, longitude, city.lat, city.lng);
-            if (distance < minDistance) {
-              minDistance = distance;
-              nearestCity = city;
-            }
-          });
-          
-          // Format address with city and state
-          const cityAddress = `${nearestCity.name}, ${nearestCity.state}, India`;
-          
-          if (setFieldValue) {
-            setFieldValue('address', cityAddress);
-          }
-          
-          onCustomerInfoUpdate?.({ ...initialValues, address: cityAddress });
-          onCustomerDataChange?.({ ...initialValues, address: cityAddress });
-          
-          console.log('Found nearest city:', nearestCity.name);
-          setGeoLocationStatus('success');
+          // Use reverse geocoding to find city
+          findCityFromCoordinates(latitude, longitude, setFieldValue);
         },
         (error) => {
           console.error('Geolocation error:', error);
@@ -146,6 +122,47 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     } else {
       console.error('Geolocation not supported by this browser');
       setGeoLocationStatus('not-supported');
+    }
+  };
+
+  // Find city using a reverse geocoding API
+  const findCityFromCoordinates = async (latitude, longitude, setFieldValue) => {
+    try {
+      // This uses a free geocoding API - you may need to replace with a different service
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+      const data = await response.json();
+      
+      // Extract city and state from the response
+      const cityName = data.address.city || data.address.town || data.address.village || data.address.hamlet;
+      const stateName = data.address.state;
+      const countryName = data.address.country;
+      
+      console.log('Reverse geocoding result:', data.address);
+      
+      // Format the address
+      const fullAddress = `${cityName || ''}${cityName && stateName ? ', ' : ''}${stateName || ''}${(cityName || stateName) && countryName ? ', ' : ''}${countryName || ''}`;
+      
+      if (setFieldValue) {
+        setFieldValue('address', fullAddress);
+      }
+      
+      onCustomerInfoUpdate?.({ ...initialValues, address: fullAddress });
+      onCustomerDataChange?.({ ...initialValues, address: fullAddress });
+      setSearchTerm(cityName || '');
+      setGeoLocationStatus('success');
+    } catch (error) {
+      console.error('Error in reverse geocoding:', error);
+      setGeoLocationStatus('error');
+      
+      // As a fallback, show the raw coordinates
+      const fallbackAddress = `Near coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+      
+      if (setFieldValue) {
+        setFieldValue('address', fallbackAddress);
+      }
+      
+      onCustomerInfoUpdate?.({ ...initialValues, address: fallbackAddress });
+      onCustomerDataChange?.({ ...initialValues, address: fallbackAddress });
     }
   };
 
@@ -281,6 +298,12 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+              
+              {isSearching && (
+                <div className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                  <span className="animate-spin">↻</span> Searching cities...
                 </div>
               )}
               
