@@ -39,9 +39,9 @@ const orderSchema = new Schema({
     transaction_id:{
         type:String
     },
-    customer_id:{
+    user_id:{
         type:mongoose.Schema.Types.ObjectId,
-        ref:"Customer"
+        ref:"User"
     },
     customer_name:{
         type:String

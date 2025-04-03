@@ -5,38 +5,23 @@ import bcrypt from "bcrypt";
 import cloudinary from "../middlewares/cloudinary.js"
 import fs from "fs";
 import path from "path";
+import orderModel from "../model/orderModel.js";
 
 export const createUser= async(req,res,next)=>{
-    try{const{First_name,Last_name,phoneno,email,password,gender,role}=req.body
-        const image=req.file ? req.file.path:null;
-        if(!First_name||
-            !Last_name||
-            !phoneno||
-            !password||
-            !email
+    try{const{name,phone,location}=req.body
+        if(!name||
+            !phone||
+            !location
         ){
             return res.status(400).json({
                 status:400,
-                message:"Please provide info"
+                message:"invalid payload"
             })
         }
-    const hashedpassword= await bcrypt.hash(password,10)
     let User=await userModel.create({
-        First_name,
-        Last_name,
-        phoneno,
-        email,
-        password:hashedpassword,
-        gender,
-        role
+        name,phone,location
     })
-    if(image){
-        const result= await cloudinary.uploader.upload(image);
-        User=await userModel.findByIdAndUpdate(
-        User._id,
-        {image, image_url: result.secure_url },
-         { new: true }
-    )}
+   
     return res.status(200).json({
         status:200,
         message:"User created",
@@ -46,6 +31,47 @@ export const createUser= async(req,res,next)=>{
         next(error)
     }
 }
+
+export const getUserByPhone = async (req, res, next) => {
+    try {
+        const phone = req.params.phone;
+        
+        if (!phone) {
+            return res.status(400).json({
+                message: "Phone is required"
+            });
+        }
+
+        const user = await userModel.findOne({ phone });
+
+        if (!user) {
+            return res.status(404).json({
+                status: 404,
+                message: "User not found"
+            });
+        }
+
+        let orders = await orderModel.find({ user_id: user._id });
+
+        return res.status(200).json({
+            status: 200,
+            message: "User found",
+            user,
+            orders : orders? orders : [],
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            status: 500,
+            message: "Internal Server Error",
+            error: error.message
+        });
+    }
+};
+
+
+   
+
 export const login = async(req,res,next)=>{
     const {email,password}=req.body
     if(!email||!password){return res.status(400).json({

@@ -1,52 +1,29 @@
 import mongoose from "mongoose";
-import { type } from "os";
-import validator from "validator";
+
 
 const userschema = new mongoose.Schema({
-    First_name:{
+    name:{
         type: String,
         require: true,
         minlength:3
     },
-    Last_name:{
-        type: String,
-        require: true,
-        minlength:3
-    },
-    phoneno:{
+   phone:{
         type: Number,
-        require: true
-    },
-    
-    email:{
-        type: String,
         require: true,
         unique: true,
-        validate:[validator.isEmail,'please provide valid email']
+        minlength:10,
     },
+    
+    location: {
+        address: { type: String, required: true },
+        city: { type: String, required: true },
+        state: { type: String, required: true },
+        country: { type: String, required: true },
+        zipCode: { type: String, required: true },
+        
+      },
 
-    password:{
-        type: String,
-        require:[true,'please provide password'],
-        minlength:8,
-    },
 
-    gender:{
-        type:String,
-        enum:["Male","Female","Others"]
-    },
-    image:{type:String},
-    role:{
-        type:String,
-        enum:["Admin","Restaurant-Owner","Sub-Restaurant-Manager","Chef", "Waiter","Customer"],
-        default:"Customer"
-    },
-    otp:{
-        type:Number
-    },
-    token:{
-        type:String
-    }
 },
 {
     versionKey:false,
