@@ -3,12 +3,12 @@ import SearchBar from './SearchBar';
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Search } from "lucide-react";
 import { 
-  useGetAllRestaurantsQuery, 
-  useGetSubRestaurantsQuery, 
-  useGetMenusQuery, 
-  useGetMenuItemsQuery, 
-  useSearchItemsQuery,
-  useGetAddOnsQuery
+  useGetMenuListQuery,
+  useGetAllItemsQuery,
+  useGetItemsByMenuIdQuery,
+  useGetMenuItemQuery,
+  useGetAddOnsQuery,
+  useSearchItemsQuery
 } from '../redux/services/restaurantApi';
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,6 +20,11 @@ const SPICY_LEVELS = [
 ];
 
 const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreferences, onSpicyChange, addOns, onAddOnToggle, onAddOnToggleChange, specialInstructions, onInstructionsChange }) => {
+  // Normalize item properties to handle different structures
+  const itemName = item.itemName || item.name || item.title || '';
+  const itemPrice = parseFloat(item.price) || 0;
+  const itemImage = item.image || item.imageUrl || item.img || 'https://via.placeholder.com/50';
+  
   return (
     <div
       className={`${
@@ -40,8 +45,8 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
         >
           <div className="relative w-16 h-16 mb-3">
             <img 
-              src={item.image || 'https://via.placeholder.com/50'} 
-              alt={item.itemName} 
+              src={itemImage}
+              alt={itemName}
               className="w-full h-full rounded-full object-cover border-2 border-white shadow-md group-hover:shadow-lg transition-shadow" 
             />
             <div className="absolute -top-2 -right-2">
@@ -54,8 +59,8 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
               />
             </div>
           </div>
-          <span className="text-sm font-medium text-center line-clamp-2">{item.itemName}</span>
-          {/* <span className="text-sm font-bold mt-2 text-app-primary">₹{item.price}</span> */}
+          <span className="text-sm font-medium text-center line-clamp-2">{itemName}</span>
+          <span className="text-sm font-bold mt-2 text-app-primary">₹{itemPrice.toFixed(2)}</span>
         </div>
 
         {/* Expanded Content - Visible when Selected */}
@@ -150,8 +155,6 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
 };
 
 const RestaurantsList = ({ onMenuItemSelect }) => {
-  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
-  const [selectedSubRestaurant, setSelectedSubRestaurant] = useState(null);
   const [selectedMenu, setSelectedMenu] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectedAddOns, setSelectedAddOns] = useState({});
@@ -159,20 +162,14 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   const [spicyPreferences, setSpicyPreferences] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredItems, setFilteredItems] = useState([]);
+  const [allItems, setAllItems] = useState([]);
 
   const { toast } = useToast();
   
   // API Query hooks
-  const { data: restaurantsData, isLoading: isLoadingRestaurants, error: restaurantsError } = useGetAllRestaurantsQuery({ page: 1, limit: 10 });
-  const { data: subRestaurantsData, isLoading: isLoadingSubRestaurants } = useGetSubRestaurantsQuery(
-    { restaurantId: selectedRestaurant?._id },
-    { skip: !selectedRestaurant }
-  );
-  const { data: menusData, isLoading: isLoadingMenus } = useGetMenusQuery(
-    selectedSubRestaurant?._id,
-    { skip: !selectedSubRestaurant }
-  );
-  const { data: menuItemsData, isLoading: isLoadingMenuItems } = useGetMenuItemsQuery(
+  const { data: menusData, isLoading: isLoadingMenus, error: menusError } = useGetMenuListQuery();
+  const { data: allItemsData, isLoading: isLoadingAllItems } = useGetAllItemsQuery();
+  const { data: menuItemsData, isLoading: isLoadingMenuItems } = useGetItemsByMenuIdQuery(
     selectedMenu?._id,
     { skip: !selectedMenu }
   );
@@ -185,495 +182,471 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
     { skip: selectedItems.length === 0 }
   );
 
-  // Update the debug logs to better understand the API response structure
+  // Log API responses for debugging
   useEffect(() => {
-    console.log('Restaurants Data:', restaurantsData);
-    if (restaurantsData) {
-      console.log('Restaurants Array:', restaurantsData.restaurants || restaurantsData.data?.restaurants || []);
+    if (menusData) {
+      console.log('Menu data received:', menusData);
+      if (Array.isArray(menusData)) {
+        console.log(`Found ${menusData.length} menu categories`);
+        menusData.forEach(menu => {
+          console.log(`Menu: ${menu.menuName}, ID: ${menu._id}`);
+        });
+      } else if (typeof menusData === 'object') {
+        console.log('Menu data is an object, not an array. Structure:', Object.keys(menusData));
+        // If it's an object with menus property
+        if (menusData.menus && Array.isArray(menusData.menus)) {
+          console.log(`Found ${menusData.menus.length} menu categories in .menus property`);
+        }
+      }
     }
-    console.log('Loading State:', isLoadingRestaurants);
-    console.log('Error:', restaurantsError);
-  }, [restaurantsData, isLoadingRestaurants, restaurantsError]);
+  }, [menusData]);
+
+  // Store all items when they're loaded
+  useEffect(() => {
+    if (allItemsData) {
+      console.log('All Items from API:', allItemsData);
+      console.log(`Received ${allItemsData.length} items from allItemsData API call`);
+      setAllItems(allItemsData);
+      
+      // If no specific menu or search is selected, show all items
+      if (!selectedMenu && !searchTerm) {
+        console.log('Setting filtered items to all items (no menu or search active)');
+        setFilteredItems(allItemsData);
+      }
+      
+      // Check the structure of the first item
+      if (allItemsData.length > 0) {
+        const sampleItem = allItemsData[0];
+        console.log('Sample item structure:', sampleItem);
+        console.log('Fields that could link to menu:', {
+          menuId: sampleItem.menuId,
+          menu: sampleItem.menu,
+          category: sampleItem.category,
+          categoryId: sampleItem.categoryId
+        });
+      }
+    }
+  }, [allItemsData, selectedMenu, searchTerm]);
 
   // Update filtered items when search results arrive
   useEffect(() => {
-    if (searchData?.data) {
-      console.log('Search results:', searchData.data);
-      const allResults = [
-        ...(searchData.data.item || []).map(item => ({
-          ...item,
-          type: 'item'
-        }))
-      ];
-      setFilteredItems(allResults);
+    if (searchTerm && searchData) {
+      setFilteredItems(searchData);
+    } else if (!searchTerm && !selectedMenu) {
+      setFilteredItems(allItems);
     }
-  }, [searchData]);
+  }, [searchData, searchTerm, selectedMenu, allItems]);
 
-  const handleRestaurantClick = (restaurant) => {
-    setSelectedRestaurant(restaurant);
-    setSelectedSubRestaurant(null);
-    setSelectedMenu(null);
-    setSelectedItems([]);
-  };
+  // Handle menu-specific items from the API
+  useEffect(() => {
+    if (selectedMenu) {
+      console.log(`Processing items for selected menu: ${selectedMenu.menuName} (${selectedMenu._id})`);
+      
+      if (menuItemsData) {
+        console.log(`Raw menu items data from API:`, menuItemsData);
+        
+        // Check different possible structures for the API response
+        let items = [];
+        
+        if (Array.isArray(menuItemsData)) {
+          console.log(`API returned an array of ${menuItemsData.length} items for menu ${selectedMenu.menuName}`);
+          items = menuItemsData;
+        } else if (menuItemsData.items && Array.isArray(menuItemsData.items)) {
+          console.log(`API returned ${menuItemsData.items.length} items in .items property for menu ${selectedMenu.menuName}`);
+          items = menuItemsData.items;
+        } else if (typeof menuItemsData === 'object') {
+          console.log(`API returned an object for menu ${selectedMenu.menuName}, checking for items property:`, Object.keys(menuItemsData));
+        }
+        
+        // If we found items in any format, use them
+        if (items.length > 0) {
+          console.log(`Setting filtered items to ${items.length} items from API for menu ${selectedMenu.menuName}`);
+          setFilteredItems(items);
+        } else {
+          // Otherwise fall back to client-side filtering
+          console.log(`No usable items from API for menu ${selectedMenu.menuName}. Falling back to client-side filtering.`);
+          filterItemsByMenuId(selectedMenu._id);
+        }
+      } else if (!isLoadingMenuItems) {
+        // menuItemsData is null/undefined but not loading - fall back to client-side filtering
+        console.log(`No API data available for menu ${selectedMenu.menuName}. Using client-side filtering.`);
+        filterItemsByMenuId(selectedMenu._id);
+      }
+    }
+  }, [selectedMenu, menuItemsData, isLoadingMenuItems, allItems]);
 
-  const handleSubRestaurantClick = (subRestaurant) => {
-    setSelectedSubRestaurant(subRestaurant);
-    setSelectedMenu(null);
-    setSelectedItems([]);
+  // Filter items based on selected menu
+  const filterItemsByMenuId = (menuId) => {
+    if (!menuId || !allItems || allItems.length === 0) {
+      return;
+    }
+    
+    console.log(`Filtering items for menu ID: ${menuId}`);
+    console.log(`Total items available: ${allItems.length}`);
+    
+    // Filter all items that belong to the selected menu
+    // Check various possible field names that could associate items with menus
+    const menuItems = allItems.filter(item => {
+      // Debug the item's menu-related fields
+      const itemMenuId = item.menuId || 
+                        (item.menu && typeof item.menu === 'string' ? item.menu : null) ||
+                        (item.menu && item.menu._id ? item.menu._id : null);
+                        
+      console.log(`Item: ${item.name || item.itemName}, Menu fields:`, {
+        directMenuId: item.menuId,
+        menuObject: typeof item.menu === 'object' ? 'object' : item.menu,
+        menuObjectId: item.menu && item.menu._id ? item.menu._id : null,
+        categoryId: item.categoryId,
+        category: item.category
+      });
+      
+      const matches = 
+        item.menuId === menuId || 
+        (item.menu === menuId) ||
+        (item.menu && item.menu._id === menuId) ||
+        item.menuObjectId === menuId ||
+        item.menuRef === menuId ||
+        item.category === menuId ||
+        item.categoryId === menuId;
+      
+      if (matches) {
+        console.log(`✓ Item matched menu: ${item.name || item.itemName}`);
+      }
+      
+      return matches;
+    });
+    
+    console.log(`Filtered ${menuItems.length} items for menu ${menuId} via client-side filtering`);
+    setFilteredItems(menuItems.length > 0 ? menuItems : []);
   };
 
   const handleMenuClick = (menu) => {
+    console.log(`Menu clicked: ${menu.menuName} (${menu._id})`);
     setSelectedMenu(menu);
     setSelectedItems([]);
+    // Filtering will be handled by the useEffect watching selectedMenu and menuItemsData
   };
 
-  const handleSearch = (term) => {
-    console.log('Searching for:', term);
-    setSearchTerm(term);
-    if (!term) {
-      setFilteredItems([]);
-    }
+  const handleClearMenuFilter = () => {
+    console.log("All Items clicked - clearing menu filter");
+    setSelectedMenu(null);
+    setFilteredItems(allItems);
   };
 
-  const clearSearch = () => {
-    setSearchTerm('');
-    setFilteredItems([]);
-  };
-
-  const handleItemClick = (item) => {
-    setSelectedItems(prev => {
-      const isSelected = prev.some(i => i._id === item._id);
-      if (isSelected) {
-        // If deselecting, clear any associated data
-        setSelectedAddOns(prev => {
-          const newAddOns = { ...prev };
-          delete newAddOns[item._id];
-          return newAddOns;
-        });
-        setSpicyPreferences(prev => {
-          const newPrefs = { ...prev };
-          delete newPrefs[item._id];
-          return newPrefs;
-        });
-        setSpecialInstructions(prev => {
-          const newInstructions = { ...prev };
-          delete newInstructions[item._id];
-          return newInstructions;
-        });
-        return prev.filter(i => i._id !== item._id);
-      } else {
-        return [...prev, item];
-      }
-    });
-
-    // Clear search if selecting from search results
-    if (searchTerm && filteredItems.some(i => i._id === item._id)) {
-      clearSearch();
-    }
-  };
-
-  const handleSpicyPreferenceChange = (itemId, value) => {
-    console.log('Setting spicy preference:', itemId, value);
+  const handleItemSelect = (item) => {
+    const isAlreadySelected = selectedItems.some(selectedItem => selectedItem._id === item._id);
     
+    if (isAlreadySelected) {
+      // Remove the item
+      setSelectedItems(prevItems => prevItems.filter(prevItem => prevItem._id !== item._id));
+      
+      // Clean up related data
+      if (spicyPreferences[item._id]) {
+        setSpicyPreferences(prev => {
+          const updated = { ...prev };
+          delete updated[item._id];
+          return updated;
+        });
+      }
+      
+      if (specialInstructions[item._id]) {
+        setSpecialInstructions(prev => {
+          const updated = { ...prev };
+          delete updated[item._id];
+          return updated;
+        });
+      }
+      
+      if (selectedAddOns[item._id]) {
+        setSelectedAddOns(prev => {
+          const updated = { ...prev };
+          delete updated[item._id];
+          return updated;
+        });
+      }
+    } else {
+      // Add the item
+      setSelectedItems(prevItems => [...prevItems, item]);
+    }
+  };
+
+  const handleAddToCart = (item) => {
+    console.log("Adding to cart:", item._id);
+    
+    // Normalize item properties
+    const itemName = item.itemName || item.name || item.title || '';
+    const itemPrice = parseFloat(item.price) || 0;
+    const itemImage = item.image || item.imageUrl || item.img || 'https://via.placeholder.com/50';
+    
+    // Get any add-ons for this item
+    const itemAddOns = selectedAddOns[item._id] || [];
+    
+    // Get special instructions and spicy preferences
+    const instructions = specialInstructions[item._id] || '';
+    const spicy = spicyPreferences[item._id] || [];
+    
+    // Format the item for the cart
+    const cartItem = {
+      _id: item._id,
+      itemName: itemName,
+      price: itemPrice,
+      basePrice: itemPrice,
+      quantity: 1,
+      image: itemImage,
+      specialInstructions: instructions,
+      spicyPreference: spicy,
+      addOns: itemAddOns,
+    };
+    
+    console.log("Formatted cart item:", cartItem);
+    
+    // Pass to parent component
+    onMenuItemSelect(cartItem);
+    
+    // Show success notification
+    toast({
+      title: "Item Added",
+      description: `${itemName} has been added to your cart.`
+    });
+    
+    // Reset selection for this item
+    setSelectedItems(prevItems => prevItems.filter(it => it._id !== item._id));
+    
+    // Clean up related data
     setSpicyPreferences(prev => {
-      // Initialize if not exists
-      if (!prev[itemId]) {
-        return {
-          ...prev,
-          [itemId]: [value]
-        };
-      }
+      const updated = { ...prev };
+      delete updated[item._id];
+      return updated;
+    });
+    
+    setSpecialInstructions(prev => {
+      const updated = { ...prev };
+      delete updated[item._id];
+      return updated;
+    });
+    
+    setSelectedAddOns(prev => {
+      const updated = { ...prev };
+      delete updated[item._id];
+      return updated;
+    });
+  };
+
+  const handleSpicyChange = (itemId, spicyLevel) => {
+    setSpicyPreferences(prev => {
+      const currentSelections = [...(prev[itemId] || [])];
+      const levelIndex = currentSelections.indexOf(spicyLevel);
       
-      const currentPrefs = [...prev[itemId]];
-      const index = currentPrefs.indexOf(value);
-      
-      // Toggle the preference
-      if (index > -1) {
-        currentPrefs.splice(index, 1);
+      if (levelIndex !== -1) {
+        // Remove this level
+        currentSelections.splice(levelIndex, 1);
       } else {
-        currentPrefs.push(value);
-      }
-      
-      // If "Normal" is selected, ensure it's recorded correctly
-      if (value === 'Normal' && index === -1) {
-        console.log('Normal spice level selected');
+        // Add this level
+        currentSelections.push(spicyLevel);
       }
       
       return {
         ...prev,
-        [itemId]: currentPrefs
+        [itemId]: currentSelections
       };
     });
   };
 
-  const handleSpecialInstructionChange = (itemId, value) => {
+  const handleInstructionsChange = (itemId, instructions) => {
     setSpecialInstructions(prev => ({
       ...prev,
-      [itemId]: value
+      [itemId]: instructions
     }));
   };
 
-  // Check if an add-on is selected for an item (without changing state)
-  const isAddOnSelected = (itemId, addOn) => {
-    return selectedAddOns[itemId]?.some(a => a._id === addOn._id) || false;
+  const handleAddOnToggle = (itemId, addOn) => {
+    const currentAddOns = selectedAddOns[itemId] || [];
+    return currentAddOns.some(a => a._id === addOn._id);
   };
 
-  // Handle add-on toggle
   const handleAddOnToggleChange = (itemId, addOn) => {
-    if (!selectedAddOns[itemId]) {
-      setSelectedAddOns(prev => ({
+    setSelectedAddOns(prev => {
+      const currentAddOns = [...(prev[itemId] || [])];
+      const addOnIndex = currentAddOns.findIndex(a => a._id === addOn._id);
+      
+      if (addOnIndex !== -1) {
+        // Remove this add-on
+        currentAddOns.splice(addOnIndex, 1);
+      } else {
+        // Add this add-on
+        currentAddOns.push(addOn);
+      }
+      
+      return {
         ...prev,
-        [itemId]: [addOn]
-      }));
-    } else {
-      const isSelected = selectedAddOns[itemId].some(a => a._id === addOn._id);
-      setSelectedAddOns(prev => {
-        const updatedAddOns = { ...prev };
-        if (isSelected) {
-          updatedAddOns[itemId] = updatedAddOns[itemId].filter(a => a._id !== addOn._id);
-        } else {
-          updatedAddOns[itemId] = [...updatedAddOns[itemId], addOn];
-        }
-        return updatedAddOns;
-      });
-    }
+        [itemId]: currentAddOns
+      };
+    });
   };
 
-  // Fetch add-ons for search results when they are displayed
-  useEffect(() => {
-    if (filteredItems.length > 0 && searchTerm) {
-      // Clear previous selections for search results
-      filteredItems.forEach(item => {
-        if (!spicyPreferences[item._id]) {
-          setSpicyPreferences(prev => ({
-            ...prev,
-            [item._id]: []
-          }));
-        }
-      });
-    }
-  }, [filteredItems, searchTerm]);
-
-  const handleAddToCart = (item) => {
-    const selectedItemAddOns = selectedAddOns[item._id] || [];
-    // Use item.spicyPreferences if provided directly (for search results)
-    const itemSpicyPreferences = item.spicyPreferences || spicyPreferences[item._id] || [];
-    const specialInstruction = specialInstructions[item._id] || '';
-
-    // Validate at least one spicy preference is selected
-    if (itemSpicyPreferences.length === 0) {
-      toast({
-        title: "Please select spicy level(s)",
-        description: "Choose at least one spicy level before adding to cart",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Create the item object with all selections
-    const itemToAdd = {
-      ...item,
-      addOns: selectedItemAddOns.map(addOn => ({
-        _id: addOn._id,
-        itemName: addOn.itemName || addOn.name,
-        price: parseFloat(addOn.price)
-      })),
-      specialInstructions: specialInstruction,
-      spicyPreferences: itemSpicyPreferences,
-      quantity: 1,
-      basePrice: parseFloat(item.price) // Store the base price separately
-    };
-
-    console.log('Adding to cart:', itemToAdd);
-
-    // Call the parent component's handler with the item and its configuration
-    onMenuItemSelect(itemToAdd);
+  const handleSearchChange = (term) => {
+    console.log(`Search term changed to: "${term}"`);
+    setSearchTerm(term);
     
-    // Success toast with more details
-    toast({
-      title: "Item added to cart",
-      description: `${item.itemName} with ${selectedItemAddOns.length} add-on${selectedItemAddOns.length !== 1 ? 's' : ''} and ${itemSpicyPreferences.join(', ')} spice levels`,
-    });
-
-    // Clear selections for this item
-    setSelectedAddOns(prev => {
-      const newAddOns = { ...prev };
-      delete newAddOns[item._id];
-      return newAddOns;
-    });
-    setSpicyPreferences(prev => {
-      const newPrefs = { ...prev };
-      delete newPrefs[item._id];
-      return newPrefs;
-    });
-    setSpecialInstructions(prev => {
-      const newInstructions = { ...prev };
-      delete newInstructions[item._id];
-      return newInstructions;
-    });
-    setSelectedItems(prev => prev.filter(i => i._id !== item._id));
-
-    // Clear search if item was selected from search results
-    if (searchTerm && filteredItems.some(i => i._id === item._id)) {
-      clearSearch();
+    // Clear search - revert to menu filter or all items
+    if (!term) {
+      if (selectedMenu) {
+        console.log(`Search cleared with active menu: ${selectedMenu.menuName}. Filtering by menu.`);
+        filterItemsByMenuId(selectedMenu._id);
+      } else {
+        console.log(`Search cleared with no active menu. Showing all items.`);
+        setFilteredItems(allItems);
+      }
+    } else {
+      console.log(`Search initiated with term: "${term}"`);
+      // When search term is entered, searchData effect will handle the response
     }
   };
 
   const renderLoading = () => (
-    <div className="flex justify-center items-center p-6">
+    <div className="flex items-center justify-center p-8">
       <Loader2 className="h-8 w-8 animate-spin text-app-primary" />
+      <span className="ml-3 text-app-primary font-medium">Loading...</span>
+    </div>
+  );
+
+  const renderError = (message) => (
+    <div className="bg-red-50 text-red-600 p-4 rounded-lg mt-4 text-center">
+      <p className="text-sm font-medium">{message}</p>
     </div>
   );
 
   return (
-    <div className="h-full overflow-y-auto space-y-6">
-      <div className="mb-4">
-        <SearchBar 
-          onCustomerSearch={handleSearch} 
-          placeholder="Search for menu items..." 
-          buttonText="Find" 
-          searchType="menu"
-          value={searchTerm}
-          onChange={(e) => handleSearch(e.target.value)}
-        />
-
-        {searchTerm && filteredItems.length > 0 && (
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold text-gray-700 mb-3">Search Results</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {filteredItems.map(item => (
-                <div
-                  key={item._id}
-                  className="relative group"
-                >
-                  <div className="flex flex-col rounded-lg transition-all duration-200 bg-white hover:bg-gray-50 border hover:shadow-md">
-                    {/* Item Header - Always Visible */}
-                    <div 
-                      className="flex flex-col items-center p-4 cursor-pointer"
-                    >
-                      <div className="relative w-16 h-16 mb-3">
-                        <img 
-                          src={item.image || 'https://via.placeholder.com/50'} 
-                          alt={item.itemName} 
-                          className="w-full h-full rounded-full object-cover border-2 border-white shadow-md transition-shadow" 
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-center line-clamp-2">{item.itemName}</span>
-                      <span className="text-sm font-bold mt-2 text-app-primary">₹{item.price}</span>
-                      
-                      {/* Spicy Level Selection */}
-                      <div className="w-full mt-2">
-                        <label className="block text-xs font-medium mb-2 text-gray-600">Select Spicy Level:</label>
-                        <select 
-                          className="w-full text-sm p-1 border rounded"
-                          value={spicyPreferences[item._id]?.[0] || ""}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value) {
-                              setSpicyPreferences(prev => ({
-                                ...prev,
-                                [item._id]: [value]
-                              }));
-                            }
-                          }}
-                        >
-                          <option value="">Select spice level</option>
-                          {SPICY_LEVELS.map(level => (
-                            <option key={level.id} value={level.value}>{level.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      {/* Quick Add to Cart Button */}
-                      <button
-                        className="w-full bg-app-primary text-white font-medium py-2 px-4 rounded-lg mt-3 hover:bg-app-primary/90"
-                        onClick={() => {
-                          // Set spicy level to Normal if none selected
-                          if (!spicyPreferences[item._id] || spicyPreferences[item._id].length === 0) {
-                            setSpicyPreferences(prev => ({
-                              ...prev,
-                              [item._id]: ['Normal']
-                            }));
-                            
-                            // Add timeout to ensure state is updated before adding to cart
-                            setTimeout(() => {
-                              handleAddToCart({
-                                ...item,
-                                spicyPreferences: ['Normal']
-                              });
-                            }, 10);
-                          } else {
-                            handleAddToCart(item);
-                          }
-                        }}
-                      >
-                        Add to Cart
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+    <div>
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-gray-400" />
           </div>
-        )}
-        
-        {searchTerm && isSearching && (
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold text-gray-700 mb-3">Search Results</h3>
-            {renderLoading()}
-          </div>
-        )}
-        
-        {searchTerm && !isSearching && filteredItems.length === 0 && (
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold text-gray-700 mb-3">Search Results</h3>
-            <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
-              No items found matching "{searchTerm}"
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Restaurants Section */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-700">Restaurants</h3>
-        {isLoadingRestaurants ? (
-          renderLoading()
-        ) : restaurantsError ? (
-          <div className="p-4 bg-red-50 rounded-lg text-center text-red-500">
-            Error loading restaurants. Please try again.
-          </div>
-        ) : restaurantsData && (restaurantsData.restaurants || restaurantsData.data?.restaurants || []).length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {(restaurantsData.restaurants || restaurantsData.data?.restaurants || []).map(restaurant => (
-              <div
-                key={restaurant._id}
-                onClick={() => handleRestaurantClick(restaurant)}
-                className={`flex flex-col items-center p-3 rounded-lg cursor-pointer transition-all hover:shadow-md h-[60px] ${
-                  selectedRestaurant?._id === restaurant._id 
-                    ? 'bg-gray-400 text-white shadow-md ring-2 ring-app-primary' 
-                    : 'bg-white hover:bg-gray-50 border'
-                }`}
-              >
-                <span className="text-sm font-medium text-center line-clamp-2">{restaurant.name}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
-            No restaurants found. Please check your connection or try again later.
-          </div>
-        )}
-      </div>
-
-      {/* Branches Section */}
-      {selectedRestaurant && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-700">Branches</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {isLoadingSubRestaurants ? renderLoading() : (
-              subRestaurantsData?.subRestaurants?.map(subRestaurant => (
-                <div
-                  key={subRestaurant._id}
-                  onClick={() => handleSubRestaurantClick(subRestaurant)}
-                  className={`flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all hover:shadow-md h-[60px] ${
-                    selectedSubRestaurant?._id === subRestaurant._id 
-                      ? 'bg-gray-400 text-white shadow-md ring-2 ring-app-primary' 
-                      : 'bg-white hover:bg-gray-50 border'
-                  }`}
-                >
-                  {/* <div className="w-16 h-16 rounded-full overflow-hidden mb-3 border-2 border-white shadow-md">
-                    <img 
-                      src={subRestaurant.image?.[0] || 'https://via.placeholder.com/50'} 
-                      alt={subRestaurant.name} 
-                      className="w-full h-full object-cover" 
-                    />
-                  </div> */}
-                  <span className="text-sm font-medium text-center line-clamp-2">{subRestaurant.name}</span>
-                  {subRestaurant.address && (
-                    <span className="text-xs text-center mt-1 opacity-75 line-clamp-1">{subRestaurant.address}</span>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
+          <input
+            type="text"
+            placeholder="Search for items..."
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-app-primary focus:border-app-primary"
+            value={searchTerm}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
         </div>
-      )}
+      </div>
 
-      {/* Menu Categories Section */}
-      {selectedSubRestaurant && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-700">Menu Categories</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {isLoadingMenus ? renderLoading() : (
-              menusData?.menu_list?.map(menu => (
-                <div
+      {/* Menus List */}
+      {isLoadingMenus ? (
+        renderLoading()
+      ) : menusError ? (
+        renderError("Could not load menus. Please try again.")
+      ) : (
+        <div className="mb-6">
+          <h3 className="font-medium text-gray-700 mb-3">Categories</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              key="all-items"
+              onClick={handleClearMenuFilter}
+              className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                !selectedMenu
+                  ? 'bg-app-primary text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All Items
+            </button>
+            {/* Check different possible data structures for menu response */}
+            {/* {Array.isArray(menusData) ? (
+              menusData.map(menu => (
+                <button
                   key={menu._id}
                   onClick={() => handleMenuClick(menu)}
-                  className={`flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all hover:shadow-md h-[60px] ${
-                    selectedMenu?._id === menu._id 
-                      ? 'bg-gray-400 text-white shadow-md ring-2 ring-app-primary' 
-                      : 'bg-white hover:bg-gray-50 border'
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                    selectedMenu?._id === menu._id
+                      ? 'bg-app-primary text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {/* <div className="w-16 h-16 rounded-full overflow-hidden mb-3 border-2 border-white shadow-md">
-                    <img 
-                      src={menu.image || 'https://via.placeholder.com/50'} 
-                      alt={menu.menuName} 
-                      className="w-full h-full object-cover" 
-                    />
-                  </div> */}
-                  <span className="text-sm font-medium text-center line-clamp-2">{menu.menuName}</span>
-                </div>
+                  {menu.menuName}
+                </button>
               ))
-            )}
+            ) : menusData && menusData.menus && Array.isArray(menusData.menus) ? (
+              menusData.menus.map(menu => (
+                <button
+                  key={menu._id}
+                  onClick={() => handleMenuClick(menu)}
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                    selectedMenu?._id === menu._id 
+                      ? 'bg-app-primary text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {menu.menuName}
+                </button>
+              ))
+            ) : (
+              <span className="text-red-500">No menu categories found</span>
+            )} */}
           </div>
         </div>
       )}
 
-      {/* Menu Items Section */}
-      {selectedMenu && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-700">Menu Items</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {isLoadingMenuItems ? renderLoading() : (
-              menuItemsData?.menu_items?.map(item => (
+      {/* Menu Items */}
+      {isSearching ? (
+        <div className="mt-4">
+          <h3 className="font-medium text-gray-700 mb-3">Searching...</h3>
+          {renderLoading()}
+        </div>
+      ) : isLoadingAllItems && !selectedMenu ? (
+        <div className="mt-4">
+          <h3 className="font-medium text-gray-700 mb-3">Loading All Items</h3>
+          {renderLoading()}
+        </div>
+      ) : isLoadingMenuItems && selectedMenu ? (
+        <div className="mt-4">
+          <h3 className="font-medium text-gray-700 mb-3">Loading {selectedMenu.menuName} Items</h3>
+          {renderLoading()}
+        </div>
+      ) : (
+        <>
+          <div className="mt-4">
+            <h3 className="font-medium text-gray-700 mb-3">
+              {searchTerm ? 'Search Results' : selectedMenu ? `Items in ${selectedMenu.menuName}` : 'All Items'}
+            </h3>
+            
+            {filteredItems && filteredItems.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {filteredItems.map(item => (
                 <MenuItemCard
                   key={item._id}
                   item={item}
-                  isSelected={selectedItems.some(i => i._id === item._id)}
-                  onSelect={handleItemClick}
+                    isSelected={selectedItems.some(selectedItem => selectedItem._id === item._id)}
+                    onSelect={handleItemSelect}
                   onAddToCart={handleAddToCart}
-                  spicyPreferences={spicyPreferences[item._id]}
-                  onSpicyChange={handleSpicyPreferenceChange}
-                  addOns={addOnsData?.data || []}
-                  onAddOnToggle={isAddOnSelected}
+                    spicyPreferences={spicyPreferences[item._id] || []}
+                    onSpicyChange={handleSpicyChange}
+                    addOns={addOnsData || []}
+                    onAddOnToggle={handleAddOnToggle}
                   onAddOnToggleChange={handleAddOnToggleChange}
-                  specialInstructions={specialInstructions[item._id]}
-                  onInstructionsChange={handleSpecialInstructionChange}
-                />
-              ))
+                    specialInstructions={specialInstructions[item._id] || ''}
+                    onInstructionsChange={handleInstructionsChange}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center p-8 bg-gray-50 rounded-lg">
+                <p className="text-gray-500">
+                  {searchTerm 
+                    ? 'No items found matching your search criteria.' 
+                    : selectedMenu 
+                      ? `No items available in ${selectedMenu.menuName} category.` 
+                      : 'No items available.'
+                  }
+                </p>
+              </div>
             )}
           </div>
-        </div>
+        </>
       )}
-
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #888;
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #555;
-        }
-      `}</style>
     </div>
   );
 };

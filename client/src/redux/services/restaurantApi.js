@@ -6,40 +6,74 @@ export const restaurantApi = createApi({
   reducerPath: 'restaurantApi',
   baseQuery: fetchBaseQuery({ baseUrl }),
   endpoints: (builder) => ({
-    getAllRestaurants: builder.query({
-      query: ({ page = 1, limit = 10 }) => `/restaurants/allrestaurants?page=${page}&limit=${limit}`,
+    // Menu endpoints
+    getMenuList: builder.query({
+      query: () => '/menu/menulist',
       transformResponse: (response) => {
-        console.log('Raw restaurant API response:', response);
-        if (response.restaurants) {
-          return response;
-        } else if (response.data && response.data.restaurants) {
-          return response.data;
+        console.log('Raw menu list response:', response);
+        if (response.menus) {
+          return response.menus;
+        } else if (response.data && response.data.menus) {
+          return response.data.menus;
         } else if (Array.isArray(response)) {
-          return { restaurants: response };
+          return response;
         }
-        return { restaurants: [] };
-      },
-      transformErrorResponse: (error) => {
-        console.error('Restaurant API error:', error);
-        return error;
+        return [];
       }
     }),
-    getSubRestaurants: builder.query({
-      query: ({ restaurantId, page = 1, limit = 10 }) => 
-        `/subrestaurants/allsubrestaurants/${restaurantId}?page=${page}&limit=${limit}`,
+    
+    createMenu: builder.mutation({
+      query: (menuData) => ({
+        url: '/menu',
+        method: 'POST',
+        body: menuData,
+      }),
     }),
-    getMenus: builder.query({
-      query: (subRestaurantId) => `/menu/menulist/${subRestaurantId}`,
+    
+    // Item endpoints
+    getAllItems: builder.query({
+      query: () => '/items/allitems',
+      transformResponse: (response) => {
+        console.log('Raw items response:', response);
+        if (response.items) {
+          return response.items;
+        } else if (response.data && response.data.items) {
+          return response.data.items;
+        } else if (Array.isArray(response)) {
+          return response;
+        }
+        return [];
+      }
     }),
-    getMenuItems: builder.query({
+    
+    getItemsByMenuId: builder.query({
       query: (menuId) => `/items/submenu/${menuId}`,
+      transformResponse: (response) => {
+        console.log('Raw items by menu response:', response);
+        if (response.items) {
+          return response.items;
+        } else if (response.data && response.data.items) {
+          return response.data.items;
+        } else if (Array.isArray(response)) {
+          return response;
+        }
+        return [];
+      }
     }),
-    searchItems: builder.query({
-      query: (searchTerm) => `/restaurants/bykeyword?search=${searchTerm}`,
+    
+    getMenuItem: builder.query({
+      query: (itemId) => `/items/${itemId}`,
     }),
+    
     getAddOns: builder.query({
       query: (itemId) => `/items/suggestions/${itemId}`,
     }),
+    
+    searchItems: builder.query({
+      query: (searchTerm) => `/items/search?query=${searchTerm}`,
+    }),
+    
+    // Order endpoint remains the same
     createOrder: builder.mutation({
       query: (orderData) => ({
         url: '/orders/createorder',
@@ -51,11 +85,13 @@ export const restaurantApi = createApi({
 });
 
 export const { 
-  useGetAllRestaurantsQuery, 
-  useGetSubRestaurantsQuery, 
-  useGetMenusQuery, 
-  useGetMenuItemsQuery,
-  useSearchItemsQuery,
+  useGetMenuListQuery,
+  useCreateMenuMutation,
+  useGetAllItemsQuery,
+  useGetItemsByMenuIdQuery,
+  useGetMenuItemQuery,
+  useLazyGetMenuItemQuery,
   useGetAddOnsQuery,
+  useSearchItemsQuery,
   useCreateOrderMutation
 } = restaurantApi;

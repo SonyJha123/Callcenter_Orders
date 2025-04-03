@@ -18,7 +18,10 @@ const validationSchema = Yup.object().shape({
   email: Yup.string()
     .email('Please enter a valid email address')
     .nullable()
-    .transform((value) => (value === '' ? undefined : value))
+    .transform((value, originalValue) => {
+      // Convert empty strings to undefined (not null)
+      return originalValue.trim() === '' ? undefined : value;
+    })
 });
 
 const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange, onAddToCart }) => {
@@ -39,7 +42,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
   
   // Get toast hook
   const { toast } = useToast();
-
+  
   const initialValues = {
     name: customerData?.name || '',
     phone: customerData?.phone || '',
@@ -62,7 +65,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
         setCustomerFound(true);
       } else if (customerData?._id) {
         // If they have an ID but no orders, they're still an existing customer
-        setIsExistingCustomer(true);
+      setIsExistingCustomer(true);
         setCustomerFound(true);
       }
       
@@ -241,9 +244,13 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             state: state,
             country: country,
             zipCode: "000000" // Adding default zipCode to prevent validation error
-          },
-          email: values.email && values.email.trim()
+          }
         };
+        
+        // Only add email if it has a value (prevents null email)
+        if (values.email && values.email.trim() !== '') {
+          userData.email = values.email.trim();
+        }
         
         console.log('Creating new customer:', userData);
         
@@ -265,7 +272,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
       }
       
       // Update customer info in parent component
-      onCustomerInfoUpdate?.(values);
+    onCustomerInfoUpdate?.(values);
     } catch (error) {
       console.error('Error saving customer data:', error);
       // Display more detailed error message
@@ -275,7 +282,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
         setApiError('Failed to save customer data. Please try again.');
       }
     } finally {
-      setSubmitting(false);
+    setSubmitting(false);
     }
   };
   
@@ -358,7 +365,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     setSearchTerm(city.name);
   };
 
-  // Update the handleReorder function to fetch item details and add items to cart
+  // Update the handleReorder function to fetch item details
   const handleReorder = async (order) => {
     console.log("Reordering items from order:", order);
     
@@ -399,14 +406,16 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           try {
             // Try to get current item details to get image and current price
             const response = await getMenuItem(item.item_id).unwrap();
-            if (response && response.MenuItem) {
-              const menuItem = response.MenuItem;
+            console.log("Item details response:", response);
+            
+            if (response && response.item) {
+              const menuItem = response.item;
               itemsToAdd.push({
                 _id: item.item_id,
                 name: menuItem.name || item.item_name || `Item #${item.item_id.substring(item.item_id.length - 6)}`,
                 price: menuItem.price || item.price || 0,
                 quantity: item.quantity || 1,
-                image: menuItem.image || '/placeholder-food.jpg'
+                image: menuItem.image || 'https://via.placeholder.com/40'
               });
             } else {
               // Fallback if item not found
@@ -415,7 +424,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                 name: item.item_name || `Item #${item.item_id.substring(item.item_id.length - 6)}`,
                 price: item.price || 0,
                 quantity: item.quantity || 1,
-                image: '/placeholder-food.jpg'
+                image: 'https://via.placeholder.com/40'
               });
             }
           } catch (error) {
@@ -426,12 +435,12 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
               name: item.item_name || `Item #${item.item_id.substring(item.item_id.length - 6)}`,
               price: item.price || 0,
               quantity: item.quantity || 1,
-              image: '/placeholder-food.jpg'
+              image: 'https://via.placeholder.com/40'
             });
           }
         }
         
-        // Add each item to cart
+        // Add each item to the cart
         itemsToAdd.forEach(item => {
           onAddToCart(item);
         });
@@ -567,16 +576,16 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             <div>
               <label className="block text-sm font-medium mb-1">Phone *</label>
               <div className="flex relative">
-                <Field
-                  type="tel"
-                  name="phone"
-                  placeholder="Phone number"
+              <Field
+                type="tel"
+                name="phone"
+                placeholder="Phone number"
                   className="w-full px-3 py-2 border rounded-l-md"
-                  onChange={(e) => {
-                    handleChange(e);
-                    onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
-                    onCustomerDataChange?.({ ...values, [e.target.name]: e.target.value });
-                  }}
+                onChange={(e) => {
+                  handleChange(e);
+                  onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
+                  onCustomerDataChange?.({ ...values, [e.target.name]: e.target.value });
+                }}
                   onBlur={(e) => {
                     if (e.target.value && e.target.value.length === 10) {
                       checkExistingCustomer(e.target.value);
@@ -606,14 +615,14 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium">Address *</label>
                 {!isExistingCustomer && ( // Only show geolocation button for new customers
-                  <button
-                    type="button"
-                    onClick={() => getGeolocation(setFieldValue)}
-                    className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                  >
-                    <MapPin size={14} />
-                    Use my location
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => getGeolocation(setFieldValue)}
+                  className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                >
+                  <MapPin size={14} />
+                  Use my location
+                </button>
                 )}
               </div>
               <div className="relative">
@@ -629,13 +638,13 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                   onChange={(e) => {
                     // Only allow address modification for new customers
                     if (!isExistingCustomer) {
-                      setSearchTerm(e.target.value);
-                      handleChange({
-                        target: {
-                          name: 'address',
-                          value: e.target.value
-                        }
-                      });
+                    setSearchTerm(e.target.value);
+                    handleChange({
+                      target: {
+                        name: 'address',
+                        value: e.target.value
+                      }
+                    });
                     }
                   }}
                   disabled={isExistingCustomer} // Disable input field for existing customers
