@@ -47,22 +47,40 @@ const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone numbe
         return;
       }
       
-      // Normally this would be an API call
+      // Mock customer data with order history for existing customers
       const mockCustomerData = {
         id: Math.floor(Math.random() * 1000),
         name: searchInput === "9876543210" ? "John Doe" : "",
         phone: searchInput,
         address: searchInput === "9876543210" ? "123 Main St, Anytown" : "",
         previousOrders: searchInput === "9876543210" ? [
-          { id: 1, items: ["Cheese Burger", "Fries"], total: 250 },
-          { id: 2, items: ["Pepperoni Pizza", "Coke"], total: 350 }
+          { 
+            id: 1001, 
+            items: ["Cheese Burger", "Fries", "Coke"], 
+            total: 250,
+            date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days ago
+          },
+          { 
+            id: 1002, 
+            items: ["Pepperoni Pizza", "Garlic Bread", "Sprite"], 
+            total: 350,
+            date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString() // 15 days ago
+          },
+          { 
+            id: 1003, 
+            items: ["Chicken Wings", "Onion Rings", "Iced Tea"], 
+            total: 280,
+            date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
+          }
         ] : []
       };
       
       onCustomerSearch(mockCustomerData);
       toast({
         title: mockCustomerData.name ? "Customer Found!" : "New Customer",
-        description: mockCustomerData.name ? `Welcome back, ${mockCustomerData.name}` : "Please enter customer details",
+        description: mockCustomerData.name 
+          ? `Welcome back, ${mockCustomerData.name}. ${mockCustomerData.previousOrders.length} previous orders found.`
+          : "Please enter customer details",
       });
     } else {
       // For menu searches, just pass the input value

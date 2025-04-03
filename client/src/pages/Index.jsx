@@ -21,6 +21,17 @@ const Index = () => {
     }));
   };
 
+  const handleCustomerDataChange = (data) => {
+    // Maintain the customer's previous orders if they exist
+    const previousOrders = customerData?.previousOrders || [];
+    
+    setCustomerData(prevData => ({
+      ...prevData,
+      ...data,
+      previousOrders
+    }));
+  };
+
   const handleAddToCart = (item) => {
     setCartItems(prevItems => {
       // Check if the item already exists with the same configuration
@@ -65,10 +76,6 @@ const Index = () => {
           : item
       ).filter(Boolean) // Remove null items (quantity 0)
     );
-  };
-
-  const handleCustomerDataChange = (data) => {
-    setCustomerData(data);
   };
 
   const handleOrderSuccess = () => {
