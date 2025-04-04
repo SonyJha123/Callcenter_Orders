@@ -207,7 +207,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
         description: additionalNotes || ''
       };
 
-      console.log('Submitting order:', orderData); // Debug log
       
       const response = await createOrder(orderData).unwrap();
       

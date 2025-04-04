@@ -11,12 +11,10 @@ export const userApi = createApi({
       query: (phone) => `/users/byphone/${phone}`,
       // Transform the response to handle all potential API response formats
       transformResponse: (response) => {
-        console.log('getUserByPhone response:', JSON.stringify(response, null, 2));
         return response;
       },
       // Handle errors including 404 not found
       onQueryStarted: async (phone, { dispatch, queryFulfilled }) => {
-        console.log(`Fetching user with phone: ${phone}`);
         try {
           await queryFulfilled;
         } catch (error) {
@@ -32,14 +30,12 @@ export const userApi = createApi({
       }),
       // Transform response to make the API easier to use
       transformResponse: (response) => {
-        console.log('createUser response:', JSON.stringify(response, null, 2));
         return response;
       },
       // Invalidate the user cache when creating a new user
       invalidatesTags: ['User'],
       // Log when the query starts
       onQueryStarted: async (userData, { dispatch, queryFulfilled }) => {
-        console.log('Creating user with data:', userData);
         try {
           await queryFulfilled;
         } catch (error) {

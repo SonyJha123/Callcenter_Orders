@@ -54,7 +54,6 @@ const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone numbe
       try {
         // Use RTK Query to search for customer by phone number
         const result = await getUserByPhone(searchInput).unwrap();
-        console.log('Customer search result:', result);
         
         if (result && result.status === 200 && result.user) {
           // Customer found
@@ -76,7 +75,6 @@ const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone numbe
             isExistingCustomer: true
           };
           
-          console.log('Formatted customer data:', userData);
           onCustomerSearch(userData);
           
           toast({

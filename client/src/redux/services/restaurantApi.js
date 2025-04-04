@@ -11,7 +11,6 @@ export const restaurantApi = createApi({
     getMenuList: builder.query({
       query: () => '/menu/menulist',
       transformResponse: (response) => {
-        console.log('Raw menu list response:', response);
         if (response.menu_list) {
           return response.menu_list;
         } else if (response.data && response.data.menu_list) {
@@ -35,7 +34,6 @@ export const restaurantApi = createApi({
     getAllItems: builder.query({
       query: () => '/items/allitems',
       transformResponse: (response) => {
-        console.log('Raw items response:', response);
         if (response.items) {
           return response.items;
         } else if (response.data && response.data.items) {
@@ -50,7 +48,6 @@ export const restaurantApi = createApi({
     getItemsByMenuId: builder.query({
       query: (menuId) => `/items/submenu/${menuId}`,
       transformResponse: (response) => {
-        console.log('Raw items by menu response:', response);
         if (response.menu_items) {
           return response.menu_items;
         } else if (response.data && response.data.menu_items) {
@@ -78,33 +75,26 @@ export const restaurantApi = createApi({
             // Handle case where item_id is an object with _id
             if (typeof itemId.item_id === 'object' && itemId.item_id._id) {
               id = itemId.item_id._id;
-              console.log(`Using _id from item_id object: ${id}`);
             } else {
               // Handle case where item_id is already the ID string
               id = itemId.item_id;
-              console.log(`Using item_id directly: ${id}`);
             }
           } else if (itemId._id) {
             id = itemId._id;
-            console.log(`Using _id from itemId object: ${id}`);
           } else if (itemId.id) {
             id = itemId.id;
-            console.log(`Using id from itemId object: ${id}`);
           }
         } else {
           // If it's a string or number, use directly
           id = String(itemId);
-          console.log(`Using itemId as string: ${id}`);
         }
         
-        console.log('Fetching menu item with extracted ID:', id);
         return { 
           url: `/items/item/${id}`,
           method: 'GET'
         };
       },
       transformResponse: (response) => {
-        console.log('getMenuItem response:', response);
         // Ensure we preserve all item data including addOns if they exist
         return response;
       },

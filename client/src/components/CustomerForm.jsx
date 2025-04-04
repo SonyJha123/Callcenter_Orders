@@ -136,9 +136,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     setCustomerFound(false);
     
     try {
-      console.log('Checking customer with phone:', phone);
       const response = await getUserByPhone(phone).unwrap();
-      console.log('API response:', response);
       
       if (response && response.status === 200 && response.user) {
         const user = response.user;
@@ -176,9 +174,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
         onCustomerDataChange?.(userData);
         setIsExistingCustomer(true);
         setCustomerFound(true);
-        console.log('Customer found:', userData);
       } else {
-        console.log('No customer found with phone:', phone);
         setIsExistingCustomer(false);
       }
     } catch (error) {
@@ -220,10 +216,8 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           userData.email = values.email.trim();
         }
         
-        console.log('Creating new customer:', userData);
         
         const response = await createUser(userData).unwrap();
-        console.log('Create user response:', response);
         
         if (response && response.status === 200 && response.User) {
           onCustomerDataChange?.({
@@ -231,7 +225,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             _id: response.User._id,
             previousOrders: []
           });
-          console.log('New customer created with ID:', response.User._id);
         }
       }
       
@@ -257,7 +250,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
           
-          console.log('Geolocation coordinates:', latitude, longitude);
           
           findCityFromCoordinates(latitude, longitude, setFieldValue);
         },
@@ -282,7 +274,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
       const stateName = data.address.state;
       const countryName = data.address.country;
       
-      console.log('Reverse geocoding result:', data.address);
       
       const fullAddress = `${cityName || ''}${cityName && stateName ? ', ' : ''}${stateName || ''}${(cityName || stateName) && countryName ? ', ' : ''}${countryName || ''}`;
       
@@ -320,13 +311,10 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
   };
 
   const handleReorder = async (order) => {
-    console.log("Reordering items from order:", order);
     
     if (order.rawData && order.rawData.items) {
-      console.log("Raw order items:", JSON.stringify(order.rawData.items));
     }
     if (order.items) {
-      console.log("Formatted order items:", JSON.stringify(order.items));
     }
     
     const orderId = order._id || order.id || (order.rawData && order.rawData._id) || 'unknown';
@@ -357,7 +345,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
         for (const item of itemsToProcess) {
           try {
             const itemId = extractItemId(item.item_id._id);
-            console.log("Processing item with ID:", itemId);
             
             if (!itemId) {
               console.error("Invalid item ID found:", item.item_id);
@@ -366,7 +353,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             
             try {
               const response = await getMenuItem(itemId).unwrap();
-              console.log("Item details response:", response);
               
               if (response && response.item) {
                 const menuItem = response.item;

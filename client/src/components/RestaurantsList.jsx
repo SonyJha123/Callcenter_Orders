@@ -176,7 +176,6 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
     searchTerm,
     { skip: !searchTerm }
   );
-  console.log(searchData)
   const { data: addOnsData, isLoading: isLoadingAddOns } = useGetAddOnsQuery(
     selectedItems.length > 0 ? selectedItems[0]._id : null,
     { skip: selectedItems.length === 0 }
@@ -185,17 +184,12 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   // Log API responses for debugging
   useEffect(() => {
     if (menusData) {
-      console.log('Menu data received:', menusData);
       if (Array.isArray(menusData)) {
-        console.log(`Found ${menusData.length} menu categories`);
         menusData.forEach(menu => {
-          console.log(`Menu: ${menu.menuName}, ID: ${menu._id}`);
         });
       } else if (typeof menusData === 'object') {
-        console.log('Menu data is an object, not an array. Structure:', Object.keys(menusData));
         // If it's an object with menus property
         if (menusData.menus && Array.isArray(menusData.menus)) {
-          console.log(`Found ${menusData.menus.length} menu categories in .menus property`);
         }
       }
     }
@@ -204,27 +198,13 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   // Store all items when they're loaded
   useEffect(() => {
     if (allItemsData) {
-      console.log('All Items from API:', allItemsData);
-      console.log(`Received ${allItemsData.length} items from allItemsData API call`);
       setAllItems(allItemsData);
       
       // If no specific menu or search is selected, show all items
       if (!selectedMenu && !searchTerm) {
-        console.log('Setting filtered items to all items (no menu or search active)');
         setFilteredItems(allItemsData);
       }
-      
-      // Check the structure of the first item
-      if (allItemsData.length > 0) {
-        const sampleItem = allItemsData[0];
-        console.log('Sample item structure:', sampleItem);
-        console.log('Fields that could link to menu:', {
-          menuId: sampleItem.menuId,
-          menu: sampleItem.menu,
-          category: sampleItem.category,
-          categoryId: sampleItem.categoryId
-        });
-      }
+     
     }
   }, [allItemsData, selectedMenu, searchTerm]);
 
@@ -240,36 +220,28 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   // Handle menu-specific items from the API
   useEffect(() => {
     if (selectedMenu) {
-      console.log(`Processing items for selected menu: ${selectedMenu.menuName} (${selectedMenu._id})`);
       
       if (menuItemsData) {
-        console.log(`Raw menu items data from API:`, menuItemsData);
         
         // Check different possible structures for the API response
         let items = [];
         
         if (Array.isArray(menuItemsData)) {
-          console.log(`API returned an array of ${menuItemsData.length} items for menu ${selectedMenu.menuName}`);
           items = menuItemsData;
         } else if (menuItemsData.items && Array.isArray(menuItemsData.items)) {
-          console.log(`API returned ${menuItemsData.items.length} items in .items property for menu ${selectedMenu.menuName}`);
           items = menuItemsData.items;
         } else if (typeof menuItemsData === 'object') {
-          console.log(`API returned an object for menu ${selectedMenu.menuName}, checking for items property:`, Object.keys(menuItemsData));
         }
         
         // If we found items in any format, use them
         if (items.length > 0) {
-          console.log(`Setting filtered items to ${items.length} items from API for menu ${selectedMenu.menuName}`);
           setFilteredItems(items);
         } else {
           // Otherwise fall back to client-side filtering
-          console.log(`No usable items from API for menu ${selectedMenu.menuName}. Falling back to client-side filtering.`);
           filterItemsByMenuId(selectedMenu._id);
         }
       } else if (!isLoadingMenuItems) {
         // menuItemsData is null/undefined but not loading - fall back to client-side filtering
-        console.log(`No API data available for menu ${selectedMenu.menuName}. Using client-side filtering.`);
         filterItemsByMenuId(selectedMenu._id);
       }
     }
@@ -281,25 +253,10 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
       return;
     }
     
-    console.log(`Filtering items for menu ID: ${menuId}`);
-    console.log(`Total items available: ${allItems.length}`);
     
     // Filter all items that belong to the selected menu
     // Check various possible field names that could associate items with menus
     const menuItems = allItems.filter(item => {
-      // Debug the item's menu-related fields
-      const itemMenuId = item.menuId || 
-                        (item.menu && typeof item.menu === 'string' ? item.menu : null) ||
-                        (item.menu && item.menu._id ? item.menu._id : null);
-                        
-      console.log(`Item: ${item.name || item.itemName}, Menu fields:`, {
-        directMenuId: item.menuId,
-        menuObject: typeof item.menu === 'object' ? 'object' : item.menu,
-        menuObjectId: item.menu && item.menu._id ? item.menu._id : null,
-        categoryId: item.categoryId,
-        category: item.category
-      });
-      
       const matches = 
         item.menuId === menuId || 
         (item.menu === menuId) ||
@@ -310,25 +267,21 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
         item.categoryId === menuId;
       
       if (matches) {
-        console.log(`✓ Item matched menu: ${item.name || item.itemName}`);
       }
       
       return matches;
     });
     
-    console.log(`Filtered ${menuItems.length} items for menu ${menuId} via client-side filtering`);
     setFilteredItems(menuItems.length > 0 ? menuItems : []);
   };
 
   const handleMenuClick = (menu) => {
-    console.log(`Menu clicked: ${menu.menuName} (${menu._id})`);
     setSelectedMenu(menu);
     setSelectedItems([]);
     // Filtering will be handled by the useEffect watching selectedMenu and menuItemsData
   };
 
   const handleClearMenuFilter = () => {
-    console.log("All Items clicked - clearing menu filter");
     setSelectedMenu(null);
     setFilteredItems(allItems);
   };
@@ -371,7 +324,6 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   };
 
   const handleAddToCart = (item) => {
-    console.log("Adding to cart:", item._id);
     
     // Normalize item properties
     const itemName = item.itemName || item.name || item.title || '';
@@ -398,7 +350,6 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
       addOns: itemAddOns,
     };
     
-    console.log("Formatted cart item:", cartItem);
     
     // Pass to parent component
     onMenuItemSelect(cartItem);
@@ -485,20 +436,16 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   };
 
   const handleSearchChange = (term) => {
-    console.log(`Search term changed to: "${term}"`);
     setSearchTerm(term);
     
     // Clear search - revert to menu filter or all items
     if (!term) {
       if (selectedMenu) {
-        console.log(`Search cleared with active menu: ${selectedMenu.menuName}. Filtering by menu.`);
         filterItemsByMenuId(selectedMenu._id);
       } else {
-        console.log(`Search cleared with no active menu. Showing all items.`);
         setFilteredItems(allItems);
       }
     } else {
-      console.log(`Search initiated with term: "${term}"`);
       // When search term is entered, searchData effect will handle the response
     }
   };

@@ -36,7 +36,6 @@ const Index = () => {
   };
 
   const handleAddToCart = (item) => {
-    console.log('Adding item to cart with full data:', item);
     
     // Create a unique cart ID to distinguish between items
     // Use timestamp to ensure uniqueness even for same items added at different times
@@ -98,7 +97,6 @@ const Index = () => {
   };
 
   const handleUpdateQuantity = (itemId, newQuantity) => {
-    console.log(`Updating quantity for item ${itemId} to ${newQuantity}`);
     
     setCartItems(prevItems => 
       prevItems.map(item => {
