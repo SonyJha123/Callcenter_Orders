@@ -1,14 +1,17 @@
+
 import React, { useState } from 'react';
 import SearchBar from '../components/SearchBar';
 import CustomerForm from '../components/CustomerForm';
 import RestaurantsList from '../components/RestaurantsList';
 import Cart from '../components/Cart';
 import { useIsMobile } from '../hooks/use-mobile';
+import { useToast } from '../hooks/use-toast';
 
 const Index = () => {
   const [customerData, setCustomerData] = useState(null);
   const [cartItems, setCartItems] = useState([]);
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   const handleCustomerSearch = (data) => {
     setCustomerData(data);
@@ -33,26 +36,50 @@ const Index = () => {
   };
 
   const handleAddToCart = (item) => {
+    console.log('Adding item to cart with full data:', item);
+    
+    // Create a unique cart ID to distinguish between items
+    // Use timestamp to ensure uniqueness even for same items added at different times
+    const cartItemId = `${item._id || (item.item_id && (typeof item.item_id === 'object' ? item.item_id._id : item.item_id))}_${Date.now()}`;
+    
+    // Ensure we have all the required properties for the cart item
+    const processedItem = {
+      ...item,
+      _id: item._id || (item.item_id && (typeof item.item_id === 'object' ? item.item_id._id : item.item_id)),
+      cartItemId, // Add unique cart item ID for tracking in cart
+      originalItemId: item._id || (item.item_id && (typeof item.item_id === 'object' ? item.item_id._id : item.item_id)), // Keep original item ID for API calls
+      itemName: item.itemName || (item.item_id && item.item_id.itemName) || item.name,
+      price: item.price || (item.item_id && item.item_id.price) || item.basePrice,
+      basePrice: item.basePrice || item.price || (item.item_id && item.item_id.price),
+      addOns: item.addOns || [],
+      quantity: item.quantity || 1,
+      image: item.image || (item.item_id && item.item_id.image)
+    };
+    
     setCartItems(prevItems => {
+      // Create a unique identifier for the item based on its properties and the cartItemId
+      const getItemIdentifier = (item) => {
+        const addOnsIds = item.addOns?.map(addon => addon._id).sort().join('-') || 'no-addons';
+        const spicyPref = item.spicyPreferences?.join('-') || 'no-pref';
+        const instructions = item.specialInstructions || 'no-instructions';
+        // Include cartItemId in the identifier if it exists
+        return item.cartItemId || `${item._id}-${addOnsIds}-${spicyPref}-${instructions}`;
+      };
+    
       // Check if the item already exists with the same configuration
-      const existingItemIndex = prevItems.findIndex(existing => 
-        existing._id === item._id &&
-        existing.spicyPreference === item.spicyPreference &&
-        JSON.stringify(existing.addOns?.sort((a, b) => a._id.localeCompare(b._id))) === 
-        JSON.stringify(item.addOns?.sort((a, b) => a._id.localeCompare(b._id))) &&
-        existing.specialInstructions === item.specialInstructions
-      );
+      const itemIdentifier = getItemIdentifier(processedItem);
+      const existingItemIndex = prevItems.findIndex(existing => getItemIdentifier(existing) === itemIdentifier);
 
       if (existingItemIndex !== -1) {
         // If item exists with same configuration, increment quantity
         return prevItems.map((existing, index) => 
           index === existingItemIndex 
-            ? { ...existing, quantity: existing.quantity + (item.quantity || 1) }
+            ? { ...existing, quantity: existing.quantity + (processedItem.quantity || 1) }
             : existing
         );
       } else {
         // If item is new or has different configuration, add it
-        return [...prevItems, { ...item, quantity: item.quantity || 1 }];
+        return [...prevItems, processedItem];
       }
     });
   };
@@ -62,24 +89,40 @@ const Index = () => {
       // Clear entire cart
       setCartItems([]);
     } else {
-      setCartItems(prevItems => prevItems.filter(item => item._id !== itemId));
+      // Remove by cartItemId if it exists, otherwise by _id
+      setCartItems(prevItems => prevItems.filter(item => 
+        (item.cartItemId && item.cartItemId !== itemId) || 
+        (!item.cartItemId && item._id !== itemId)
+      ));
     }
   };
 
   const handleUpdateQuantity = (itemId, newQuantity) => {
+    console.log(`Updating quantity for item ${itemId} to ${newQuantity}`);
+    
     setCartItems(prevItems => 
-      prevItems.map(item => 
-        item._id === itemId
-          ? newQuantity === 0 
-            ? null // Will be filtered out
-            : { ...item, quantity: newQuantity }
-          : item
-      ).filter(Boolean) // Remove null items (quantity 0)
+      prevItems.map(item => {
+        // Check if we should update by cartItemId or _id
+        const shouldUpdate = (item.cartItemId && item.cartItemId === itemId) || 
+                             (!item.cartItemId && item._id === itemId);
+                             
+        return shouldUpdate ? { ...item, quantity: newQuantity } : item;
+      }).filter(item => item.quantity > 0) // Remove items with quantity 0
     );
   };
 
   const handleOrderSuccess = () => {
+    // Show success toast
+    toast({
+      title: "Order Completed",
+      description: "The order has been successfully placed.",
+    });
+    
+    // Clear cart
     setCartItems([]);
+    
+    // Don't reset the customer data as that would reload the form
+    // This way the customer data remains, but cart is cleared
   };
 
   return (
@@ -152,4 +195,4 @@ const Index = () => {
   );
 };
 
-export default Index; 
+export default Index;

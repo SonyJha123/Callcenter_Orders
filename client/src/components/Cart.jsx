@@ -108,10 +108,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
   };
 
   const resetAllFields = () => {
-    // Clear cart items
     onRemoveItem(-1);
-    
-    // Reset all form fields
     setAgentFields({
       user_id: '',
       customer_name: '',
@@ -120,8 +117,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
       pickup_address: '',
       delivery_address: ''
     });
-    
-    // Reset all other fields
     setAdditionalNotes('');
     setCouponCode('');
     setPromoDiscount(0);
@@ -143,7 +138,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      // Validate required fields
       const newErrors = {};
       
       if (cartItems.length === 0) {
@@ -173,7 +167,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
         newErrors.delivery_address = 'Delivery address is required';
       }
       
-      // If there are validation errors, show them and stop submission
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
         for (const error of Object.values(newErrors)) {
@@ -188,9 +181,9 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
 
       const orderData = {
         items: cartItems.map(item => ({
-          item_id: item._id,
+          item_id: item.originalItemId || item._id,
           quantity: item.quantity,
-          price: item.price,
+          price: item.price || item.basePrice,
           addOns: item.addOns || [],
           spicyPreference: item.spicyPreference || '',
           specialInstructions: item.specialInstructions || ''
@@ -223,14 +216,11 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
         description: `Order #${response.orderId || ''} has been confirmed.`,
       });
       
-      // Reset form and cart
-      onRemoveItem(-1);
-      setPromoDiscount(0);
-      setAdditionalCharge(0);
-      setRemainingBalance(0);
-      setAdditionalNotes('');
-      setCouponCode('');
-      onOrderSuccess?.();
+      resetAllFields();
+      
+      if (onOrderSuccess) {
+        onOrderSuccess();
+      }
       
     } catch (error) {
       console.error("Order creation error:", error);
@@ -246,7 +236,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
   
   const isOrderButtonDisabled = cartItems.length === 0 || isCreatingOrder;
 
-  // Update agentFields when customerData changes
   useEffect(() => {
     if (customerData) {
       setAgentFields(prev => ({
@@ -261,21 +250,34 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
     }
   }, [customerData]);
 
+  const getItemUniqueKey = (item) => {
+    if (item.cartItemId) {
+      return item.cartItemId;
+    }
+    
+    const addOnsKey = item.addOns && item.addOns.length > 0 ? 
+      JSON.stringify(item.addOns.map(a => a._id).sort()) : 'no-addons';
+    
+    const spicyKey = item.spicyPreferences ? 
+      JSON.stringify(item.spicyPreferences) : 'no-spicy';
+      
+    const instructions = item.specialInstructions || 'no-instructions';
+    
+    return `${item._id}-${addOnsKey}-${spicyKey}-${instructions}`;
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm h-full flex flex-col">
-      {/* Cart Header */}
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold text-gray-800">Your Order</h2>
       </div>
 
-      {/* Cart Content */}
       <div className="flex-1 overflow-auto p-4 space-y-6">
-        {/* Selected Items */}
         {cartItems.length > 0 ? (
           <div className="space-y-3">
             <h3 className="font-medium text-gray-700">Selected Items</h3>
             {cartItems.map((item) => (
-              <Card key={`${item._id}-${JSON.stringify(item.addOns)}-${JSON.stringify(item.spicyPreferences)}`} className="p-3">
+              <Card key={getItemUniqueKey(item)} className="p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
                     <img
@@ -289,7 +291,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                         <p className="text-sm font-medium text-app-primary">₹{(item.basePrice || item.price).toFixed(2)}</p>
                       </div>
                       
-                      {/* Spicy Preferences Tags */}
                       {item.spicyPreferences?.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {item.spicyPreferences.map((pref, index) => (
@@ -308,7 +309,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                         </div>
                       )}
 
-                      {/* Add-ons Details */}
                       {item.addOns && item.addOns.length > 0 ? (
                         <div className="mt-2">
                           <div className="flex items-center gap-1 mb-1">
@@ -336,7 +336,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                         </div>
                       )}
 
-                      {/* Special Instructions */}
                       {item.specialInstructions && (
                         <div className="mt-2">
                           <div className="flex items-center gap-1 mb-1">
@@ -356,20 +355,27 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => onUpdateQuantity(item._id, Math.max(0, item.quantity - 1))}
+                        onClick={() => {
+                          const newQty = Math.max(0, item.quantity - 1);
+                          if (newQty === 0) {
+                            onRemoveItem(item.cartItemId || item._id);
+                          } else {
+                            onUpdateQuantity(item.cartItemId || item._id, newQty);
+                          }
+                        }}
                         className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600"
                       >
                         <Minus className="h-4 w-4" />
                       </button>
                       <span className="w-8 text-center font-medium">{item.quantity}</span>
                       <button 
-                        onClick={() => onUpdateQuantity(item._id, item.quantity + 1)}
+                        onClick={() => onUpdateQuantity(item.cartItemId || item._id, item.quantity + 1)}
                         className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600"
                       >
                         <Plus className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => onRemoveItem(item._id)}
+                        onClick={() => onRemoveItem(item.cartItemId || item._id)}
                         className="p-1.5 rounded-full hover:bg-red-50 text-red-500"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -402,7 +408,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
           </div>
         )}
 
-        {/* Customer Information */}
         <div className="space-y-3">
           <h3 className="font-medium text-gray-700">Customer Information</h3>
           <div className="grid gap-3">
@@ -457,7 +462,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
           </div>
         </div>
 
-        {/* Delivery Options */}
         <div className="space-y-3">
           <h3 className="font-medium text-gray-700">Delivery Options</h3>
           <RadioGroup
@@ -465,7 +469,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
             value={deliveryMode}
             onValueChange={(value) => {
               setDeliveryMode(value);
-              // Clear errors when changing delivery mode
               setErrors(prev => ({
                 ...prev,
                 pickup_address: '',
@@ -525,7 +528,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
           )}
         </div>
 
-        {/* Payment Method */}
         <div className="space-y-3">
           <h3 className="font-medium text-gray-700">Payment Method</h3>
           <RadioGroup
@@ -549,19 +551,17 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
           </RadioGroup>
         </div>
 
-        {/* Special Instructions */}
         <div className="space-y-3">
           <h3 className="font-medium text-gray-700">Special Instructions</h3>
           <Textarea
             name="description"
             placeholder="Any special instructions or notes..."
-                  value={additionalNotes}
-                  onChange={(e) => setAdditionalNotes(e.target.value)}
+            value={additionalNotes}
+            onChange={(e) => setAdditionalNotes(e.target.value)}
             className="h-20"
           />
         </div>
 
-        {/* Order Summary */}
         <div className="space-y-3">
           <h3 className="font-medium text-gray-700">Order Summary</h3>
           <div className="space-y-2 text-sm">
@@ -603,7 +603,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
         </div>
       </div>
 
-      {/* Cart Footer */}
       <div className="p-4 border-t">
         <Button
           className="w-full"

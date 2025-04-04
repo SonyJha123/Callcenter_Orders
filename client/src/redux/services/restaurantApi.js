@@ -64,19 +64,48 @@ export const restaurantApi = createApi({
     
     getMenuItem: builder.query({
       query: (itemId) => {
-        // Ensure we're sending a proper string ID, not an object
-        if (!itemId) return { url: '/items/item/null', method: 'GET' };
+        // Extract the item ID properly, handling different formats
+        let id = '';
         
-        // If itemId is an object with _id property, extract it
-        const id = typeof itemId === 'object' ? 
-          (itemId._id || itemId.id || '') : 
-          String(itemId || '');
+        if (!itemId) {
+          console.error('Invalid itemId provided to getMenuItem:', itemId);
+          return { url: '/items/item/null', method: 'GET' };
+        }
         
-        console.log('Fetching menu item with ID:', id);
-        return `/items/item/${id}`;
+        // If itemId is an object with item_id property
+        if (typeof itemId === 'object' && itemId !== null) {
+          if (itemId.item_id) {
+            // Handle case where item_id is an object with _id
+            if (typeof itemId.item_id === 'object' && itemId.item_id._id) {
+              id = itemId.item_id._id;
+              console.log(`Using _id from item_id object: ${id}`);
+            } else {
+              // Handle case where item_id is already the ID string
+              id = itemId.item_id;
+              console.log(`Using item_id directly: ${id}`);
+            }
+          } else if (itemId._id) {
+            id = itemId._id;
+            console.log(`Using _id from itemId object: ${id}`);
+          } else if (itemId.id) {
+            id = itemId.id;
+            console.log(`Using id from itemId object: ${id}`);
+          }
+        } else {
+          // If it's a string or number, use directly
+          id = String(itemId);
+          console.log(`Using itemId as string: ${id}`);
+        }
+        
+        console.log('Fetching menu item with extracted ID:', id);
+        return { 
+          url: `/items/item/${id}`,
+          method: 'GET'
+        };
       },
       transformResponse: (response) => {
         console.log('getMenuItem response:', response);
+        // Ensure we preserve all item data including addOns if they exist
         return response;
       },
       transformErrorResponse: (response, meta, arg) => {
@@ -93,7 +122,7 @@ export const restaurantApi = createApi({
       query: (searchTerm) => `/items/bykeyword?keyword=${searchTerm}`,
     }),
     
-    // Order endpoint remains the same
+    // Order endpoint
     createOrder: builder.mutation({
       query: (orderData) => ({
         url: '/orders/createorder',
