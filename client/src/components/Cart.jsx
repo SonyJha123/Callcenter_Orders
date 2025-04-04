@@ -75,13 +75,17 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
   
   const calculateItemTotal = (item) => {
-    const basePrice = parseFloat(item.basePrice || item.price);
-    const addOnTotal = item.addOns?.reduce((sum, addOn) => sum + parseFloat(addOn.price), 0) || 0;
-    return (basePrice + addOnTotal) * item.quantity;
+    const basePrice = parseFloat(item.basePrice || item.price)* item.quantity;
+    const addOnTotal = item.addOns?.reduce((sum, addOn) => sum + parseFloat(addOn.price) * (addOn.quantity || 1), 0) || 0;
+    return (basePrice + addOnTotal);
   };
   
   const calculateAddOnsTotal = (addOns) => {
-    return addOns?.reduce((sum, addOn) => sum + addOn.price, 0) || 0;
+    return addOns?.reduce((sum, addOn) => sum + parseFloat(addOn.price) * (addOn.quantity || 1), 0) || 0;
+  };
+  const calculateTotalItem = (item) => {
+    const basePrice = parseFloat(item.basePrice || item.price);
+    return (basePrice) * item.quantity;
   };
   
   const subtotal = cartItems.reduce((sum, item) => sum + calculateItemTotal(item), 0);
@@ -184,7 +188,10 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
           item_id: item.originalItemId || item._id,
           quantity: item.quantity,
           price: item.price || item.basePrice,
-          addOns: item.addOns || [],
+          addOns: item.addOns ? item.addOns.map(addOn => ({
+            ...addOn,
+            quantity: addOn.quantity || 1
+          })) : [],
           spicyPreference: item.spicyPreference || '',
           specialInstructions: item.specialInstructions || ''
         })),
@@ -212,7 +219,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
       
       toast({
         title: "Order Placed Successfully!",
-        description: `Order #${response.orderId || ''} has been confirmed.`,
+        description:` Order #${response.orderId || ''} has been confirmed.`,
       });
       
       resetAllFields();
@@ -308,33 +315,6 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                         </div>
                       )}
 
-                      {item.addOns && item.addOns.length > 0 ? (
-                        <div className="mt-2">
-                          <div className="flex items-center gap-1 mb-1">
-                            <Tag className="h-3 w-3 text-gray-600" />
-                            <p className="text-xs font-medium text-gray-600">Add-ons</p>
-                          </div>
-                          <div className="bg-gray-50 rounded-md p-2 space-y-1.5">
-                            {item.addOns.map((addOn) => (
-                              <div key={addOn._id} className="flex justify-between text-xs">
-                                <span className="text-gray-700">{addOn.itemName}</span>
-                                <span className="text-app-primary font-medium">₹{parseFloat(addOn.price).toFixed(2)}</span>
-                              </div>
-                            ))}
-                            <div className="text-xs font-medium text-gray-700 pt-1.5 border-t border-gray-200">
-                              <div className="flex justify-between">
-                                <span>Add-ons Total:</span>
-                                <span className="text-app-primary">₹{item.addOns.reduce((sum, addOn) => sum + parseFloat(addOn.price), 0).toFixed(2)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-2">
-                          <p className="text-xs text-gray-500">No add-ons selected</p>
-                        </div>
-                      )}
-
                       {item.specialInstructions && (
                         <div className="mt-2">
                           <div className="flex items-center gap-1 mb-1">
@@ -387,19 +367,108 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                     <span className="text-gray-600">Base Price (₹{(item.basePrice || item.price).toFixed(2)} × {item.quantity})</span>
                     <span>₹{((item.basePrice || item.price) * item.quantity).toFixed(2)}</span>
                   </div>
-                  {item.addOns?.length > 0 && (
+                  {/* {item.addOns?.length > 0 && (
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Add-ons (₹{item.addOns.reduce((sum, addOn) => sum + parseFloat(addOn.price), 0).toFixed(2)} × {item.quantity})</span>
-                      <span>₹{(item.addOns.reduce((sum, addOn) => sum + parseFloat(addOn.price), 0) * item.quantity).toFixed(2)}</span>
+                      <span className="text-gray-600">Add-ons Total</span>
+                      <span>₹{(item.addOns.reduce((sum, addOn) => sum + parseFloat(addOn.price) * (addOn.quantity || 1), 0)).toFixed(2)}</span>
                     </div>
-                  )}
+                  )} */}
                   <div className="flex justify-between items-center text-sm font-medium pt-1 border-t">
                     <span className="text-gray-700">Item Total</span>
-                    <span className="text-app-primary">₹{calculateItemTotal(item).toFixed(2)}</span>
+                    <span className="text-app-primary">₹{(parseFloat(item.price) * (item.quantity || 1))}</span>
                   </div>
                 </div>
               </Card>
             ))}
+
+            {/* Add-ons Section */}
+            {cartItems.some(item => item.addOns && item.addOns.length > 0) && (
+              <div className="mt-6">
+                <h3 className="font-medium text-gray-700 mb-2">Add-on Items</h3>
+                {cartItems.map(item => 
+                  item.addOns && item.addOns.length > 0 ? (
+                    <div key={`addons-${item.cartItemId || item._id}`} className="mb-2">
+                      <p className="text-xs font-medium text-gray-600 mb-1">Add-ons for {item.itemName || item.name}</p>
+                      {item.addOns.map(addOn => (
+                        <Card key={`${item.cartItemId || item._id}-addon-${addOn._id}`} className="p-3 mb-2 border-l-2 border-l-app-primary/50">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-medium text-sm">{addOn.itemName || addOn.name}</p>
+                                  <p className="text-xs text-gray-500">Add-on for {item.itemName || item.name}</p>
+                                </div>
+                                <p className="text-sm font-medium text-app-primary">₹{parseFloat(addOn.price).toFixed(2)}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  const newAddOns = [...item.addOns];
+                                  const addOnIndex = newAddOns.findIndex(a => a._id === addOn._id);
+                                  if (addOnIndex !== -1) {
+                                    if (addOn.quantity > 1) {
+                                      newAddOns[addOnIndex] = { ...addOn, quantity: (addOn.quantity || 1) - 1 };
+                                    } else {
+                                      newAddOns.splice(addOnIndex, 1);
+                                    }
+                                    const updatedItem = { 
+                                      ...item, 
+                                      addOns: newAddOns 
+                                    };
+                                    onUpdateQuantity(item.cartItemId || item._id, item.quantity, updatedItem);
+                                  }
+                                }}
+                                className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+                              <span className="w-8 text-center font-medium">{addOn.quantity || 1}</span>
+                              <button 
+                                onClick={() => {
+                                  const newAddOns = [...item.addOns];
+                                  const addOnIndex = newAddOns.findIndex(a => a._id === addOn._id);
+                                  if (addOnIndex !== -1) {
+                                    newAddOns[addOnIndex] = { ...addOn, quantity: (addOn.quantity || 1) + 1 };
+                                    const updatedItem = { 
+                                      ...item, 
+                                      addOns: newAddOns 
+                                    };
+                                    onUpdateQuantity(item.cartItemId || item._id, item.quantity, updatedItem);
+                                  }
+                                }}
+                                className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const newAddOns = item.addOns.filter(a => a._id !== addOn._id);
+                                  const updatedItem = { 
+                                    ...item, 
+                                    addOns: newAddOns 
+                                  };
+                                  onUpdateQuantity(item.cartItemId || item._id, item.quantity, updatedItem);
+                                }}
+                                className="p-1.5 rounded-full hover:bg-red-50 text-red-500"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="mt-2 pt-2 border-t space-y-1">
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Add-on Price (₹{parseFloat(addOn.price).toFixed(2)} × {addOn.quantity || 1})</span>
+                              <span>₹{(parseFloat(addOn.price) * (addOn.quantity || 1))}</span>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : null
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
@@ -565,7 +634,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
           <h3 className="font-medium text-gray-700">Order Summary</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span>Subtotal</span>
+              <span>Items Subtotal</span>
               <span>₹{subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
@@ -594,6 +663,12 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                 <span>₹{additionalCharge.toFixed(2)}</span>
               </div>
             )}
+            {remainingBalance > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Remaining Balance</span>
+                <span>-₹{remainingBalance.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-medium text-base pt-2 border-t">
               <span>Total</span>
               <span>₹{total.toFixed(2)}</span>
@@ -618,4 +693,4 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
   );
 };
 
-export default Cart;
+export default Cart;

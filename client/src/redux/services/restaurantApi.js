@@ -60,47 +60,16 @@ export const restaurantApi = createApi({
     }),
     
     getMenuItem: builder.query({
-      query: (itemId) => {
-        // Extract the item ID properly, handling different formats
-        let id = '';
-        
-        if (!itemId) {
-          console.error('Invalid itemId provided to getMenuItem:', itemId);
-          return { url: '/items/item/null', method: 'GET' };
-        }
-        
-        // If itemId is an object with item_id property
-        if (typeof itemId === 'object' && itemId !== null) {
-          if (itemId.item_id) {
-            // Handle case where item_id is an object with _id
-            if (typeof itemId.item_id === 'object' && itemId.item_id._id) {
-              id = itemId.item_id._id;
-            } else {
-              // Handle case where item_id is already the ID string
-              id = itemId.item_id;
-            }
-          } else if (itemId._id) {
-            id = itemId._id;
-          } else if (itemId.id) {
-            id = itemId.id;
-          }
-        } else {
-          // If it's a string or number, use directly
-          id = String(itemId);
-        }
-        
-        return { 
-          url: `/items/item/${id}`,
-          method: 'GET'
-        };
-      },
+      query: (itemId) => `/items/submenu/${itemId}`,
       transformResponse: (response) => {
-        // Ensure we preserve all item data including addOns if they exist
-        return response;
-      },
-      transformErrorResponse: (response, meta, arg) => {
-        console.error('Error fetching menu item:', { response, meta, arg });
-        return response;
+        if (response.menu_items) {
+          return response.menu_items;
+        } else if (response.data && response.data.menu_items) {
+          return response.data.menu_items;
+        } else if (Array.isArray(response)) {
+          return response;
+        }
+        return [];
       }
     }),
     

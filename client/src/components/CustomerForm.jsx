@@ -6,6 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useLazyGetUserByPhoneQuery, useCreateUserMutation } from '../redux/services/userApi';
 import { useLazyGetMenuItemQuery } from '../redux/services/restaurantApi';
 import { useToast } from "../hooks/use-toast";
+import { Card } from './ui/card';
 
 const validationSchema = Yup.object().shape({
   name: Yup.string()
@@ -33,13 +34,13 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
   const [isSearching, setIsSearching] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [customerFound, setCustomerFound] = useState(false);
-  
+
   const [getUserByPhone, { isLoading: isLoadingUser, error: userError }] = useLazyGetUserByPhoneQuery();
   const [createUser, { isLoading: isCreatingUser, error: createError }] = useCreateUserMutation();
   const [getMenuItem] = useLazyGetMenuItemQuery();
-  
+
   const { toast } = useToast();
-  
+
   const initialValues = {
     name: customerData?.name || '',
     phone: customerData?.phone || '',
@@ -59,7 +60,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
         setIsExistingCustomer(true);
         setCustomerFound(true);
       }
-      
+
       if (customerData.address) {
         setSearchTerm(customerData.address.split(',')[0] || '');
       }
@@ -70,7 +71,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     if (isExistingCustomer) {
       return;
     }
-    
+
     const searchCities = async () => {
       if (searchTerm && searchTerm.length >= 2) {
         setIsSearching(true);
@@ -79,15 +80,15 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchTerm)}&countrycodes=in&limit=8&addressdetails=1`,
             { headers: { 'Accept-Language': 'en-US,en' } }
           );
-          
+
           if (response.ok) {
             const data = await response.json();
-            
+
             const cities = data.reduce((acc, location) => {
               const address = location.address;
               const cityName = address.city || address.town || address.village || address.hamlet || address.municipality;
               const stateName = address.state;
-              
+
               if (cityName && stateName && !acc.some(city => city.name === cityName)) {
                 acc.push({
                   name: cityName,
@@ -97,11 +98,10 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
               }
               return acc;
             }, []);
-            
+
             setSuggestedCities(cities);
           }
         } catch (error) {
-          console.error('Error searching for cities:', error);
         } finally {
           setIsSearching(false);
         }
@@ -109,21 +109,19 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
         setSuggestedCities([]);
       }
     };
-    
+
     const timer = setTimeout(() => {
       searchCities();
     }, 300);
-    
+
     return () => clearTimeout(timer);
   }, [searchTerm, isExistingCustomer]);
 
   useEffect(() => {
     if (userError) {
       setApiError('Failed to check for existing customer');
-      console.error('User lookup error:', userError);
     } else if (createError) {
       setApiError('Failed to save customer data');
-      console.error('Create user error:', createError);
     } else {
       setApiError(null);
     }
@@ -131,13 +129,13 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
 
   const checkExistingCustomer = async (phone) => {
     if (!phone || phone.length !== 10) return;
-    
+
     setApiError(null);
     setCustomerFound(false);
-    
+
     try {
       const response = await getUserByPhone(phone).unwrap();
-      
+
       if (response && response.status === 200 && response.user) {
         const user = response.user;
         const formattedOrders = Array.isArray(response.orders) ? response.orders.map(order => ({
@@ -157,7 +155,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           deliveryMode: order.delivery_mode,
           rawData: order
         })) : [];
-        
+
         const userData = {
           _id: user._id,
           name: user.name,
@@ -170,7 +168,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           zipCode: user.location?.zipCode || '',
           previousOrders: formattedOrders
         };
-        
+
         onCustomerDataChange?.(userData);
         setIsExistingCustomer(true);
         setCustomerFound(true);
@@ -178,7 +176,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
         setIsExistingCustomer(false);
       }
     } catch (error) {
-      console.error('Error checking existing customer:', error);
     }
   };
 
@@ -192,14 +189,14 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
 
   const handleSubmit = async (values, { setSubmitting }) => {
     setApiError(null);
-    
+
     try {
       if (!isExistingCustomer) {
         const addressParts = values.address.split(',').map(part => part.trim());
         const city = addressParts[0] || '';
         const state = addressParts[1] || '';
         const country = addressParts[2] || 'India';
-        
+
         const userData = {
           name: values.name,
           phone: parseInt(values.phone, 10),
@@ -211,14 +208,14 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             zipCode: "000000"
           }
         };
-        
+
         if (values.email && values.email.trim() !== '') {
           userData.email = values.email.trim();
         }
-        
-        
+
+
         const response = await createUser(userData).unwrap();
-        
+
         if (response && response.status === 200 && response.User) {
           onCustomerDataChange?.({
             ...values,
@@ -227,10 +224,9 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           });
         }
       }
-      
+
       onCustomerInfoUpdate?.(values);
     } catch (error) {
-      console.error('Error saving customer data:', error);
       if (error.data && error.data.message) {
         setApiError(`Failed to save customer data: ${error.data.message}`);
       } else {
@@ -243,24 +239,22 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
 
   const getGeolocation = (setFieldValue = null) => {
     setGeoLocationStatus('loading');
-    
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
-          
-          
+
+
           findCityFromCoordinates(latitude, longitude, setFieldValue);
         },
         (error) => {
-          console.error('Geolocation error:', error);
           setGeoLocationStatus('error');
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
     } else {
-      console.error('Geolocation not supported by this browser');
       setGeoLocationStatus('not-supported');
     }
   };
@@ -269,32 +263,31 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
       const data = await response.json();
-      
+
       const cityName = data.address.city || data.address.town || data.address.village || data.address.hamlet;
       const stateName = data.address.state;
       const countryName = data.address.country;
-      
-      
+
+
       const fullAddress = `${cityName || ''}${cityName && stateName ? ', ' : ''}${stateName || ''}${(cityName || stateName) && countryName ? ', ' : ''}${countryName || ''}`;
-      
+
       if (setFieldValue) {
         setFieldValue('address', fullAddress);
       }
-      
+
       onCustomerInfoUpdate?.({ ...initialValues, address: fullAddress });
       onCustomerDataChange?.({ ...initialValues, address: fullAddress });
       setSearchTerm(cityName || '');
       setGeoLocationStatus('success');
     } catch (error) {
-      console.error('Error in reverse geocoding:', error);
       setGeoLocationStatus('error');
-      
+
       const fallbackAddress = `Near coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-      
+
       if (setFieldValue) {
         setFieldValue('address', fallbackAddress);
       }
-      
+
       onCustomerInfoUpdate?.({ ...initialValues, address: fallbackAddress });
       onCustomerDataChange?.({ ...initialValues, address: fallbackAddress });
     }
@@ -302,7 +295,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
 
   const handleCitySelect = (city, setFieldValue) => {
     const cityAddress = `${city.name}, ${city.state}, India`;
-    
+
     setFieldValue('address', cityAddress);
     onCustomerInfoUpdate?.({ ...initialValues, address: cityAddress });
     onCustomerDataChange?.({ ...initialValues, address: cityAddress });
@@ -311,54 +304,52 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
   };
 
   const handleReorder = async (order) => {
-    
+
     if (order.rawData && order.rawData.items) {
     }
     if (order.items) {
     }
-    
+
     const orderId = order._id || order.id || (order.rawData && order.rawData._id) || 'unknown';
-    
+
     toast({
       title: "Processing Reorder",
       description: "Fetching item details..."
     });
-    
+
     try {
       let itemsToAdd = [];
       let itemsToProcess = [];
-      
+
       if (order.rawData && order.rawData.items && Array.isArray(order.rawData.items)) {
         itemsToProcess = order.rawData.items;
       } else if (Array.isArray(order.items)) {
         itemsToProcess = order.items;
       } else {
-        console.error("No valid items array found in order:", order);
         toast({
           title: "Reorder Failed",
           description: "Could not find items data in this order"
         });
         return;
       }
-      
+
       if (itemsToProcess.length > 0 && typeof onAddToCart === 'function') {
         for (const item of itemsToProcess) {
           try {
             const itemId = extractItemId(item.item_id._id);
-            
+
             if (!itemId) {
-              console.error("Invalid item ID found:", item.item_id);
               continue;
             }
-            
+
             try {
               const response = await getMenuItem(itemId).unwrap();
-              
+
               if (response && response.item) {
                 const menuItem = response.item;
                 const itemName = getItemName(menuItem, item);
                 const image = getItemImage(menuItem, item);
-                
+
                 itemsToAdd.push({
                   _id: itemId,
                   name: itemName,
@@ -370,20 +361,18 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                 itemsToAdd.push(createFallbackItem(item, itemId));
               }
             } catch (apiError) {
-              console.error("Error fetching menu item:", apiError);
               itemsToAdd.push(createFallbackItem(item, itemId));
             }
           } catch (itemError) {
-            console.error("Error processing item:", itemError);
           }
         }
-        
+
         itemsToAdd.forEach(item => {
           if (item._id) {
             onAddToCart(item);
           }
         });
-        
+
         const addedCount = itemsToAdd.filter(item => item._id).length;
         if (addedCount > 0) {
           toast({
@@ -402,8 +391,8 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           description: `Cannot add items from Order #${orderId} - missing item data`
         });
       }
+
     } catch (error) {
-      console.error("Error processing reorder:", error);
       toast({
         title: "Reorder Failed",
         description: "An error occurred while processing your reorder request"
@@ -413,9 +402,9 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
 
   const extractItemId = (itemId) => {
     if (!itemId) return null;
-    
+
     if (typeof itemId === 'string') return itemId;
-    
+
     if (typeof itemId === 'object') {
       if (itemId._id) return itemId._id;
       if (itemId.id) return itemId.id;
@@ -423,38 +412,38 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
         return itemId.item_id._id || itemId.item_id.id || null;
       }
     }
-    
+
     return null;
   };
 
   const getItemName = (menuItem, originalItem) => {
-    return menuItem.itemName || 
-           menuItem.name || 
-           (menuItem.item_id && menuItem.item_id.itemName) ||
-           (originalItem.item_id && typeof originalItem.item_id === 'object' && originalItem.item_id.itemName) ||
-           'Unknown Item';
+    return menuItem.itemName ||
+      menuItem.name ||
+      (menuItem.item_id && menuItem.item_id.itemName) ||
+      (originalItem.item_id && typeof originalItem.item_id === 'object' && originalItem.item_id.itemName) ||
+      'Unknown Item';
   };
 
   const getItemImage = (menuItem, originalItem) => {
-    return menuItem.image || 
-           (menuItem.item_id && menuItem.item_id.image) ||
-           (originalItem.item_id && typeof originalItem.item_id === 'object' && originalItem.item_id.image) ||
-           'https://via.placeholder.com/40';
+    return menuItem.image ||
+      (menuItem.item_id && menuItem.item_id.image) ||
+      (originalItem.item_id && typeof originalItem.item_id === 'object' && originalItem.item_id.image) ||
+      'https://via.placeholder.com/40';
   };
 
   const createFallbackItem = (item, itemId) => {
     let name = 'Unknown Item';
     let image = 'https://via.placeholder.com/40';
-    
+
     if (item.item_id && typeof item.item_id === 'object') {
       name = item.item_id.itemName || item.item_id.item_name || name;
       image = item.item_id.image || image;
     }
-    
+
     if (itemId && itemId.length > 6) {
       name = `${name} (#${itemId.substring(itemId.length - 6)})`;
     }
-    
+
     return {
       _id: itemId,
       name: name,
@@ -472,7 +461,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
 
   const renderCustomerInfoBlock = () => {
     if (!customerData || !isExistingCustomer) return null;
-    
+
     return (
       <div className="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
         <h3 className="font-medium text-gray-700 mb-2 flex items-center">
@@ -529,16 +518,16 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           </div>
         )}
       </div>
-      
+
       {renderCustomerInfoBlock()}
-      
+
       {apiError && (
         <div className="bg-red-50 text-red-600 p-2 rounded-md mb-4 text-sm flex items-center">
           <AlertCircle size={16} className="mr-2" />
           {apiError}
         </div>
       )}
-      
+
       <Formik
         initialValues={initialValues}
         validationSchema={validationSchema}
@@ -584,7 +573,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                     }
                   }}
                 />
-                <button 
+                <button
                   type="button"
                   className="bg-app-primary text-white px-3 py-2 rounded-r-md hover:bg-app-primary/90 transition-colors flex items-center"
                   onClick={() => handleCheckCustomer(values.phone, setFieldValue)}
@@ -641,12 +630,12 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                   disabled={isExistingCustomer}
                 />
               </div>
-              
+
               {!isExistingCustomer && suggestedCities.length > 0 && (
                 <div className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg">
                   <ul className="max-h-60 overflow-auto py-1">
                     {suggestedCities.map((city, index) => (
-                      <li 
+                      <li
                         key={index}
                         className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
                         onClick={() => handleCitySelect(city, setFieldValue)}
@@ -658,13 +647,13 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                   </ul>
                 </div>
               )}
-              
+
               {!isExistingCustomer && isSearching && (
                 <div className="text-xs text-blue-600 mt-1 flex items-center gap-1">
                   <span className="animate-spin">↻</span> Searching cities...
                 </div>
               )}
-              
+
               {!isExistingCustomer && geoLocationStatus === 'loading' && (
                 <div className="text-xs text-blue-600 mt-1 flex items-center gap-1">
                   <span className="animate-spin">↻</span> Finding your city...
@@ -697,7 +686,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                 <p className="text-red-500 text-xs mt-1">{errors.email}</p>
               )}
             </div>
-            
+
             <div className="md:col-span-2 mt-2">
               <button
                 type="submit"
@@ -713,7 +702,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
 
       {isExistingCustomer && customerData?.previousOrders && customerData.previousOrders.length > 0 && (
         <div className="mt-6 border-t pt-4">
-          <button 
+          <button
             type="button"
             onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
             className="flex items-center justify-between w-full bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
@@ -727,7 +716,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             </div>
             {isHistoryExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
-          
+
           {isHistoryExpanded && (
             <div className="mt-3 space-y-3">
               {customerData.previousOrders.map((order, index) => (
@@ -744,40 +733,59 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                         {order.date ? formatDistanceToNow(new Date(order.date), { addSuffix: true }) : 'Previous order'}
                       </span>
                       {order.status && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                          order.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
-                          order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                          order.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
-                          'bg-blue-100 text-blue-700'
-                        }`}>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${order.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+                            order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                              order.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                                'bg-blue-100 text-blue-700'
+                          }`}>
                           {order.status}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-app-primary">₹{Math.abs(order.total || 0).toFixed(2)}</span>
+                      <span className="text-sm font-semibold text-app-primary">₹{Math.abs(order.subtotal + order.tax - order.total - order.delivery_fees + 1 || 0).toFixed(2)}</span>
                       {expandedOrderId === (order.id || index) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </div>
                   </button>
-                  
+
                   {expandedOrderId === (order.id || index) && (
                     <div className="px-3 pb-3">
                       <div className="bg-white p-2 rounded border text-xs mb-2">
                         <p className="font-medium mb-1">Items:</p>
                         <ul className="list-disc list-inside space-y-1 text-gray-600">
                           {Array.isArray(order.items) && order.items.length > 0 ? (
-                            order.items.map((item, idx) => (
+                            order?.items.map((item, idx) => (
                               <li key={idx}>
-                                {typeof item === 'object' 
-                                  ? `${item.quantity || '1'}x ${item.item_id.item_name || (item.item_id._id ? `Item #${item.item_id._id.substring(item.item_id._id.length - 6)}` : 'Unknown Item')}`
-                                  : String(item)}
+                                {typeof item === 'object'
+                                  ? <>
+                                    <Card key={idx} className="p-3">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-3">
+                                          <img
+                                            src={item.item_id.image || 'https://via.placeholder.com/40'}
+                                            alt={item.item_id.itemName || item.item_id.name}
+                                            className="w-10 h-10 rounded-full object-cover"
+                                          />
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-start">
+                                              <p className="font-medium text-sm">{item.item_id.itemName || item.item_id.name}</p>
+                                              <p className="text-sm font-medium text-app-primary">₹{(item.item_id.basePrice || item.item_id.price).toFixed(2)}</p>
+                                            </div>
+
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </Card>
+                                  </>
+                                  : String(item)
+                                }
                               </li>
                             ))
                           ) : (
                             <li>No item details available</li>
                           )}
                         </ul>
-                        
+
                         <div className="mt-3 pt-2 border-t border-gray-100">
                           <div className="grid grid-cols-2 gap-2">
                             <div>
@@ -791,9 +799,9 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex justify-end">
-                        <button 
+                        <button
                           type="button"
                           className="text-xs px-3 py-1 bg-app-primary text-white rounded-md hover:bg-app-primary/90 transition-colors"
                           onClick={() => handleReorder(order)}

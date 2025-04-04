@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import SearchBar from '../components/SearchBar';
 import CustomerForm from '../components/CustomerForm';
@@ -55,6 +54,14 @@ const Index = () => {
       image: item.image || (item.item_id && item.item_id.image)
     };
     
+    // Ensure add-ons have a quantity field
+    if (processedItem.addOns && processedItem.addOns.length > 0) {
+      processedItem.addOns = processedItem.addOns.map(addOn => ({
+        ...addOn,
+        quantity: addOn.quantity || 1
+      }));
+    }
+    
     setCartItems(prevItems => {
       // Create a unique identifier for the item based on its properties and the cartItemId
       const getItemIdentifier = (item) => {
@@ -96,15 +103,24 @@ const Index = () => {
     }
   };
 
-  const handleUpdateQuantity = (itemId, newQuantity) => {
+  const handleUpdateQuantity = (itemId, newQuantity, updatedItem) => {
     
     setCartItems(prevItems => 
       prevItems.map(item => {
         // Check if we should update by cartItemId or _id
         const shouldUpdate = (item.cartItemId && item.cartItemId === itemId) || 
                              (!item.cartItemId && item._id === itemId);
-                             
-        return shouldUpdate ? { ...item, quantity: newQuantity } : item;
+        
+        if (shouldUpdate) {
+          // If updatedItem is provided, use it to update the item (for add-on changes)
+          if (updatedItem) {
+            return { ...item, ...updatedItem, quantity: newQuantity };
+          }
+          // Otherwise just update the quantity
+          return { ...item, quantity: newQuantity };
+        }
+        
+        return item;
       }).filter(item => item.quantity > 0) // Remove items with quantity 0
     );
   };
@@ -164,7 +180,7 @@ const Index = () => {
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="p-4 border-b border-gray-100">
                 <h2 className="text-lg font-semibold text-app-secondary flex items-center">
-                  <span className="mr-2">🍽️</span> Menu Selection
+                  <span className="mr-2">🍽</span> Menu Selection
                 </h2>
               </div>
               <div className="p-4">
@@ -175,7 +191,7 @@ const Index = () => {
             </div>
           </div>
           
-          <div className={`${isMobile ? '' : 'col-span-4 sticky'}`} style={{ top: '5rem' }}>
+          <div className={`${isMobile ? '' : 'col-span-4 sticky'}} style={{ top: '5rem' }`}>
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <Cart 
                 cartItems={cartItems}
@@ -193,4 +209,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default Index;
