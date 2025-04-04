@@ -75,17 +75,13 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
   
   const calculateItemTotal = (item) => {
-    const basePrice = parseFloat(item.basePrice || item.price)* item.quantity;
+    const basePrice = parseFloat(item.basePrice || item.price);
     const addOnTotal = item.addOns?.reduce((sum, addOn) => sum + parseFloat(addOn.price) * (addOn.quantity || 1), 0) || 0;
-    return (basePrice + addOnTotal);
+    return (basePrice + addOnTotal) * item.quantity;
   };
   
   const calculateAddOnsTotal = (addOns) => {
     return addOns?.reduce((sum, addOn) => sum + parseFloat(addOn.price) * (addOn.quantity || 1), 0) || 0;
-  };
-  const calculateTotalItem = (item) => {
-    const basePrice = parseFloat(item.basePrice || item.price);
-    return (basePrice) * item.quantity;
   };
   
   const subtotal = cartItems.reduce((sum, item) => sum + calculateItemTotal(item), 0);
@@ -370,13 +366,13 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                   {/* {item.addOns?.length > 0 && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Add-ons Total</span>
-                      <span>₹{(item.addOns.reduce((sum, addOn) => sum + parseFloat(addOn.price) * (addOn.quantity || 1), 0)).toFixed(2)}</span>
+                      <span>₹{(item.addOns.reduce((sum, addOn) => sum + parseFloat(addOn.price) * (addOn.quantity || 1), 0) * item.quantity).toFixed(2)}</span>
                     </div>
                   )} */}
-                  <div className="flex justify-between items-center text-sm font-medium pt-1 border-t">
+                  {/* <div className="flex justify-between items-center text-sm font-medium pt-1 border-t">
                     <span className="text-gray-700">Item Total</span>
-                    <span className="text-app-primary">₹{(parseFloat(item.price) * (item.quantity || 1))}</span>
-                  </div>
+                    <span className="text-app-primary">₹{calculateItemTotal(item).toFixed(2)}</span>
+                  </div> */}
                 </div>
               </Card>
             ))}
@@ -459,7 +455,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                           <div className="mt-2 pt-2 border-t space-y-1">
                             <div className="flex justify-between items-center text-sm">
                               <span className="text-gray-600">Add-on Price (₹{parseFloat(addOn.price).toFixed(2)} × {addOn.quantity || 1})</span>
-                              <span>₹{(parseFloat(addOn.price) * (addOn.quantity || 1))}</span>
+                              <span>₹{(parseFloat(addOn.price) * (addOn.quantity || 1)).toFixed(2)}</span>
                             </div>
                           </div>
                         </Card>

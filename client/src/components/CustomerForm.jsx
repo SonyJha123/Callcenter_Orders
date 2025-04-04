@@ -102,6 +102,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             setSuggestedCities(cities);
           }
         } catch (error) {
+          console.error('Error searching for cities:', error);
         } finally {
           setIsSearching(false);
         }
@@ -120,6 +121,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
   useEffect(() => {
     if (userError) {
       setApiError('Failed to check for existing customer');
+      console.error('User lookup error:', userError);
     } else if (createError) {
       setApiError('Failed to save customer data');
     } else {
