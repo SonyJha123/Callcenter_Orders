@@ -24,7 +24,6 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
   const itemName = item.itemName || item.name || item.title || '';
   const itemPrice = parseFloat(item.price) || 0;
   const itemImage = item.image || item.imageUrl || item.img || 'https://via.placeholder.com/50';
-  
   return (
     <div
       className={`${
@@ -95,14 +94,14 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
             </div>
 
             {/* Add-ons Section */}
-            {addOns?.length > 0 && (
+            {addOns?.data?.length > 0 && (
               <div className="mb-4">
                 <label className="block text-xs font-medium mb-2 text-gray-600">Add-ons</label>
                 <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                  {addOns.map(addOn => (
+                  {addOns?.data?.map(addOn => (
                     <label 
                       key={addOn._id} 
-                      className={`flex items-center justify-between p-2 rounded border transition-all ${
+                       className={`flex items-center justify-between p-2 rounded border transition-all ${
                         onAddOnToggle(item._id, addOn)
                           ? 'bg-app-primary/5 border-app-primary'
                           : 'bg-white hover:bg-gray-50 border-gray-200'
@@ -177,6 +176,7 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
     searchTerm,
     { skip: !searchTerm }
   );
+  console.log(searchData)
   const { data: addOnsData, isLoading: isLoadingAddOns } = useGetAddOnsQuery(
     selectedItems.length > 0 ? selectedItems[0]._id : null,
     { skip: selectedItems.length === 0 }
@@ -199,7 +199,7 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
         }
       }
     }
-  }, [menusData]);
+  }, [menusData, addOnsData, searchData]);
 
   // Store all items when they're loaded
   useEffect(() => {
@@ -231,7 +231,7 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   // Update filtered items when search results arrive
   useEffect(() => {
     if (searchTerm && searchData) {
-      setFilteredItems(searchData);
+      setFilteredItems(searchData.data);
     } else if (!searchTerm && !selectedMenu) {
       setFilteredItems(allItems);
     }
@@ -555,7 +555,7 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
               All Items
             </button>
             {/* Check different possible data structures for menu response */}
-            {/* {Array.isArray(menusData) ? (
+            {Array.isArray(menusData) ? (
               menusData.map(menu => (
                 <button
                   key={menu._id}
@@ -585,7 +585,7 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
               ))
             ) : (
               <span className="text-red-500">No menu categories found</span>
-            )} */}
+            )}
           </div>
         </div>
       )}

@@ -19,7 +19,6 @@ const validationSchema = Yup.object().shape({
     .email('Please enter a valid email address')
     .nullable()
     .transform((value, originalValue) => {
-      // Convert empty strings to undefined (not null)
       return originalValue.trim() === '' ? undefined : value;
     })
 });
@@ -35,12 +34,10 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
   const [apiError, setApiError] = useState(null);
   const [customerFound, setCustomerFound] = useState(false);
   
-  // RTK Query hooks
   const [getUserByPhone, { isLoading: isLoadingUser, error: userError }] = useLazyGetUserByPhoneQuery();
   const [createUser, { isLoading: isCreatingUser, error: createError }] = useCreateUserMutation();
   const [getMenuItem] = useLazyGetMenuItemQuery();
   
-  // Get toast hook
   const { toast } = useToast();
   
   const initialValues = {
@@ -50,35 +47,26 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     email: customerData?.email || '',
   };
 
-  // Update states when new customer data is received
   useEffect(() => {
     if (customerData) {
-      console.log('Received customer data:', customerData);
-      
-      // If customer data has an isExistingCustomer flag, use it
       if (customerData.isExistingCustomer !== undefined) {
         setIsExistingCustomer(customerData.isExistingCustomer);
         setCustomerFound(customerData.isExistingCustomer);
       } else if (customerData?.name && customerData?.previousOrders?.length > 0) {
-        // Otherwise use the name and orders to determine if existing
         setIsExistingCustomer(true);
         setCustomerFound(true);
       } else if (customerData?._id) {
-        // If they have an ID but no orders, they're still an existing customer
-      setIsExistingCustomer(true);
+        setIsExistingCustomer(true);
         setCustomerFound(true);
       }
       
-      // Set search term for address if an address exists
       if (customerData.address) {
         setSearchTerm(customerData.address.split(',')[0] || '');
       }
     }
   }, [customerData]);
 
-  // Update the useEffect for address search to skip for existing customers
   useEffect(() => {
-    // Skip address search if this is an existing customer
     if (isExistingCustomer) {
       return;
     }
@@ -87,7 +75,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
       if (searchTerm && searchTerm.length >= 2) {
         setIsSearching(true);
         try {
-          // Using OpenStreetMap Nominatim API for geocoding (free, no API key required)
           const response = await fetch(
             `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchTerm)}&countrycodes=in&limit=8&addressdetails=1`,
             { headers: { 'Accept-Language': 'en-US,en' } }
@@ -96,7 +83,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           if (response.ok) {
             const data = await response.json();
             
-            // Extract unique cities from results
             const cities = data.reduce((acc, location) => {
               const address = location.address;
               const cityName = address.city || address.town || address.village || address.hamlet || address.municipality;
@@ -124,15 +110,13 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
       }
     };
     
-    // Debounce search to avoid making too many requests
     const timer = setTimeout(() => {
       searchCities();
     }, 300);
     
     return () => clearTimeout(timer);
-  }, [searchTerm, isExistingCustomer]); // Added isExistingCustomer to dependency array
+  }, [searchTerm, isExistingCustomer]);
 
-  // Handle API errors
   useEffect(() => {
     if (userError) {
       setApiError('Failed to check for existing customer');
@@ -145,7 +129,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     }
   }, [userError, createError]);
 
-  // Check if customer exists by phone number
   const checkExistingCustomer = async (phone) => {
     if (!phone || phone.length !== 10) return;
     
@@ -159,16 +142,13 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
       
       if (response && response.status === 200 && response.user) {
         const user = response.user;
-        // Format the orders data from API response
         const formattedOrders = Array.isArray(response.orders) ? response.orders.map(order => ({
           id: order._id,
           items: order.items.map(item => {
-            // Make sure items are always strings
             if (typeof item === 'object') {
-              // Make item_id more user-friendly by showing it in a shorter format
-              const itemId = item.item_id;
+              const itemId = item.item_id._id;
               const shortId = itemId && itemId.length > 6 ? itemId.substring(itemId.length - 6) : itemId;
-              return `${item.quantity || '1'}x ${item.item_name || (shortId ? `Item #${shortId}` : 'Unknown Item')}`;
+              return `${item.quantity || '1'}x ${item.item_id.item_name || (shortId ? `Item #${shortId}` : 'Unknown Item')}`;
             }
             return String(item);
           }),
@@ -177,12 +157,9 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           status: order.status,
           paymentMethod: order.payment_method,
           deliveryMode: order.delivery_mode,
-          rawData: order // Keep the original data
+          rawData: order
         })) : [];
-
-        console.log('Formatted orders:', formattedOrders);
         
-        // User exists, update form with user data
         const userData = {
           _id: user._id,
           name: user.name,
@@ -196,13 +173,9 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           previousOrders: formattedOrders
         };
         
-        // Update customer data in parent component
         onCustomerDataChange?.(userData);
-        
-        // Set existing customer flag
         setIsExistingCustomer(true);
         setCustomerFound(true);
-        
         console.log('Customer found:', userData);
       } else {
         console.log('No customer found with phone:', phone);
@@ -210,11 +183,9 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
       }
     } catch (error) {
       console.error('Error checking existing customer:', error);
-      // Error will be handled by the useEffect watching userError
     }
   };
 
-  // Explicit check for customer button
   const handleCheckCustomer = (phone, setFieldValue) => {
     if (phone && phone.length === 10) {
       checkExistingCustomer(phone);
@@ -228,13 +199,11 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     
     try {
       if (!isExistingCustomer) {
-        // Extract address components
         const addressParts = values.address.split(',').map(part => part.trim());
         const city = addressParts[0] || '';
         const state = addressParts[1] || '';
         const country = addressParts[2] || 'India';
         
-        // Format user data for API
         const userData = {
           name: values.name,
           phone: parseInt(values.phone, 10),
@@ -243,62 +212,53 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             city: city,
             state: state,
             country: country,
-            zipCode: "000000" // Adding default zipCode to prevent validation error
+            zipCode: "000000"
           }
         };
         
-        // Only add email if it has a value (prevents null email)
         if (values.email && values.email.trim() !== '') {
           userData.email = values.email.trim();
         }
         
         console.log('Creating new customer:', userData);
         
-        // Create new user using RTK mutation
         const response = await createUser(userData).unwrap();
         console.log('Create user response:', response);
         
         if (response && response.status === 200 && response.User) {
-          // Update with created user data including ID
           onCustomerDataChange?.({
             ...values,
             _id: response.User._id,
             previousOrders: []
           });
-          
-          // Set notification for new customer creation
           console.log('New customer created with ID:', response.User._id);
         }
       }
       
-      // Update customer info in parent component
-    onCustomerInfoUpdate?.(values);
+      onCustomerInfoUpdate?.(values);
     } catch (error) {
       console.error('Error saving customer data:', error);
-      // Display more detailed error message
       if (error.data && error.data.message) {
         setApiError(`Failed to save customer data: ${error.data.message}`);
       } else {
         setApiError('Failed to save customer data. Please try again.');
       }
     } finally {
-    setSubmitting(false);
+      setSubmitting(false);
     }
   };
-  
+
   const getGeolocation = (setFieldValue = null) => {
     setGeoLocationStatus('loading');
     
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // Get location coordinates
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
           
           console.log('Geolocation coordinates:', latitude, longitude);
           
-          // Use reverse geocoding to find city
           findCityFromCoordinates(latitude, longitude, setFieldValue);
         },
         (error) => {
@@ -313,21 +273,17 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     }
   };
 
-  // Find city using a reverse geocoding API
   const findCityFromCoordinates = async (latitude, longitude, setFieldValue) => {
     try {
-      // This uses a free geocoding API - you may need to replace with a different service
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
       const data = await response.json();
       
-      // Extract city and state from the response
       const cityName = data.address.city || data.address.town || data.address.village || data.address.hamlet;
       const stateName = data.address.state;
       const countryName = data.address.country;
       
       console.log('Reverse geocoding result:', data.address);
       
-      // Format the address
       const fullAddress = `${cityName || ''}${cityName && stateName ? ', ' : ''}${stateName || ''}${(cityName || stateName) && countryName ? ', ' : ''}${countryName || ''}`;
       
       if (setFieldValue) {
@@ -342,7 +298,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
       console.error('Error in reverse geocoding:', error);
       setGeoLocationStatus('error');
       
-      // As a fallback, show the raw coordinates
       const fallbackAddress = `Near coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
       
       if (setFieldValue) {
@@ -354,7 +309,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     }
   };
 
-  // Handle city selection from suggestions
   const handleCitySelect = (city, setFieldValue) => {
     const cityAddress = `${city.name}, ${city.state}, India`;
     
@@ -365,11 +319,9 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     setSearchTerm(city.name);
   };
 
-  // Update the handleReorder function to fetch item details
   const handleReorder = async (order) => {
     console.log("Reordering items from order:", order);
     
-    // Debug the exact structure of the order and its items
     if (order.rawData && order.rawData.items) {
       console.log("Raw order items:", JSON.stringify(order.rawData.items));
     }
@@ -377,81 +329,88 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
       console.log("Formatted order items:", JSON.stringify(order.items));
     }
     
-    // Get a valid order ID
     const orderId = order._id || order.id || (order.rawData && order.rawData._id) || 'unknown';
     
-    // Show loading toast
     toast({
       title: "Processing Reorder",
       description: "Fetching item details..."
     });
     
     try {
-      // Items to add to cart
       let itemsToAdd = [];
       let itemsToProcess = [];
       
-      // If this is a raw order object
-      if (order._id && order.items && Array.isArray(order.items)) {
-        itemsToProcess = order.items;
-      }
-      // If it's a formatted order with rawData
-      else if (order.rawData && order.rawData.items && Array.isArray(order.rawData.items)) {
+      if (order.rawData && order.rawData.items && Array.isArray(order.rawData.items)) {
         itemsToProcess = order.rawData.items;
+      } else if (Array.isArray(order.items)) {
+        itemsToProcess = order.items;
+      } else {
+        console.error("No valid items array found in order:", order);
+        toast({
+          title: "Reorder Failed",
+          description: "Could not find items data in this order"
+        });
+        return;
       }
       
       if (itemsToProcess.length > 0 && typeof onAddToCart === 'function') {
-        // Process each item - try to fetch current details from API
         for (const item of itemsToProcess) {
           try {
-            // Try to get current item details to get image and current price
-            const response = await getMenuItem(item.item_id).unwrap();
-            console.log("Item details response:", response);
+            const itemId = extractItemId(item.item_id._id);
+            console.log("Processing item with ID:", itemId);
             
-            if (response && response.item) {
-              const menuItem = response.item;
-              itemsToAdd.push({
-                _id: item.item_id,
-                name: menuItem.name || item.item_name || `Item #${item.item_id.substring(item.item_id.length - 6)}`,
-                price: menuItem.price || item.price || 0,
-                quantity: item.quantity || 1,
-                image: menuItem.image || 'https://via.placeholder.com/40'
-              });
-            } else {
-              // Fallback if item not found
-              itemsToAdd.push({
-                _id: item.item_id,
-                name: item.item_name || `Item #${item.item_id.substring(item.item_id.length - 6)}`,
-                price: item.price || 0,
-                quantity: item.quantity || 1,
-                image: 'https://via.placeholder.com/40'
-              });
+            if (!itemId) {
+              console.error("Invalid item ID found:", item.item_id);
+              continue;
             }
-          } catch (error) {
-            console.error("Error fetching menu item:", error);
-            // Fallback for error
-            itemsToAdd.push({
-              _id: item.item_id,
-              name: item.item_name || `Item #${item.item_id.substring(item.item_id.length - 6)}`,
-              price: item.price || 0,
-              quantity: item.quantity || 1,
-              image: 'https://via.placeholder.com/40'
-            });
+            
+            try {
+              const response = await getMenuItem(itemId).unwrap();
+              console.log("Item details response:", response);
+              
+              if (response && response.item) {
+                const menuItem = response.item;
+                const itemName = getItemName(menuItem, item);
+                const image = getItemImage(menuItem, item);
+                
+                itemsToAdd.push({
+                  _id: itemId,
+                  name: itemName,
+                  price: menuItem.price || item.price || 0,
+                  quantity: item.quantity || 1,
+                  image: image
+                });
+              } else {
+                itemsToAdd.push(createFallbackItem(item, itemId));
+              }
+            } catch (apiError) {
+              console.error("Error fetching menu item:", apiError);
+              itemsToAdd.push(createFallbackItem(item, itemId));
+            }
+          } catch (itemError) {
+            console.error("Error processing item:", itemError);
           }
         }
         
-        // Add each item to the cart
         itemsToAdd.forEach(item => {
-          onAddToCart(item);
+          if (item._id) {
+            onAddToCart(item);
+          }
         });
         
-        // Show success toast
-        toast({
-          title: "Items Added to Cart",
-          description: `Added ${itemsToAdd.length} item(s) from Order #${orderId}`
-        });
+        const addedCount = itemsToAdd.filter(item => item._id).length;
+        if (addedCount > 0) {
+          toast({
+            title: "Items Added to Cart",
+            description: `Added ${addedCount} item(s) from Order #${orderId}`
+          });
+        } else {
+          toast({
+            title: "Reorder Notice",
+            description: "Could not add any items from this order."
+          });
+        }
       } else {
-        // Fallback message if we can't add to cart
         toast({
           title: "Reorder Failed",
           description: `Cannot add items from Order #${orderId} - missing item data`
@@ -466,17 +425,65 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     }
   };
 
-  // Toggle expanded state for a specific order
+  const extractItemId = (itemId) => {
+    if (!itemId) return null;
+    
+    if (typeof itemId === 'string') return itemId;
+    
+    if (typeof itemId === 'object') {
+      if (itemId._id) return itemId._id;
+      if (itemId.id) return itemId.id;
+      if (itemId.item_id && typeof itemId.item_id === 'object') {
+        return itemId.item_id._id || itemId.item_id.id || null;
+      }
+    }
+    
+    return null;
+  };
+
+  const getItemName = (menuItem, originalItem) => {
+    return menuItem.itemName || 
+           menuItem.name || 
+           (menuItem.item_id && menuItem.item_id.itemName) ||
+           (originalItem.item_id && typeof originalItem.item_id === 'object' && originalItem.item_id.itemName) ||
+           'Unknown Item';
+  };
+
+  const getItemImage = (menuItem, originalItem) => {
+    return menuItem.image || 
+           (menuItem.item_id && menuItem.item_id.image) ||
+           (originalItem.item_id && typeof originalItem.item_id === 'object' && originalItem.item_id.image) ||
+           'https://via.placeholder.com/40';
+  };
+
+  const createFallbackItem = (item, itemId) => {
+    let name = 'Unknown Item';
+    let image = 'https://via.placeholder.com/40';
+    
+    if (item.item_id && typeof item.item_id === 'object') {
+      name = item.item_id.itemName || item.item_id.item_name || name;
+      image = item.item_id.image || image;
+    }
+    
+    if (itemId && itemId.length > 6) {
+      name = `${name} (#${itemId.substring(itemId.length - 6)})`;
+    }
+    
+    return {
+      _id: itemId,
+      name: name,
+      price: item.price || 0,
+      quantity: item.quantity || 1,
+      image: image
+    };
+  };
+
   const toggleOrderExpand = (orderId) => {
-    // orderId could be a string ID or a numeric index
-    console.log("Toggling order expand for:", orderId);
     setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
   };
 
-  // Determine if any API operation is loading
   const isLoading = isLoadingUser || isCreatingUser;
 
-  // Render customer info block
   const renderCustomerInfoBlock = () => {
     if (!customerData || !isExistingCustomer) return null;
     
@@ -537,7 +544,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
         )}
       </div>
       
-      {/* Render customer info summary block */}
       {renderCustomerInfoBlock()}
       
       {apiError && (
@@ -576,16 +582,16 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             <div>
               <label className="block text-sm font-medium mb-1">Phone *</label>
               <div className="flex relative">
-              <Field
-                type="tel"
-                name="phone"
-                placeholder="Phone number"
+                <Field
+                  type="tel"
+                  name="phone"
+                  placeholder="Phone number"
                   className="w-full px-3 py-2 border rounded-l-md"
-                onChange={(e) => {
-                  handleChange(e);
-                  onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
-                  onCustomerDataChange?.({ ...values, [e.target.name]: e.target.value });
-                }}
+                  onChange={(e) => {
+                    handleChange(e);
+                    onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
+                    onCustomerDataChange?.({ ...values, [e.target.name]: e.target.value });
+                  }}
                   onBlur={(e) => {
                     if (e.target.value && e.target.value.length === 10) {
                       checkExistingCustomer(e.target.value);
@@ -614,15 +620,15 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             <div className="md:col-span-2 relative">
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium">Address *</label>
-                {!isExistingCustomer && ( // Only show geolocation button for new customers
-                <button
-                  type="button"
-                  onClick={() => getGeolocation(setFieldValue)}
-                  className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                >
-                  <MapPin size={14} />
-                  Use my location
-                </button>
+                {!isExistingCustomer && (
+                  <button
+                    type="button"
+                    onClick={() => getGeolocation(setFieldValue)}
+                    className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                  >
+                    <MapPin size={14} />
+                    Use my location
+                  </button>
                 )}
               </div>
               <div className="relative">
@@ -636,22 +642,20 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                   className={`w-full pl-10 px-3 py-2 border rounded-md ${isExistingCustomer ? 'bg-gray-50' : ''}`}
                   value={searchTerm}
                   onChange={(e) => {
-                    // Only allow address modification for new customers
                     if (!isExistingCustomer) {
-                    setSearchTerm(e.target.value);
-                    handleChange({
-                      target: {
-                        name: 'address',
-                        value: e.target.value
-                      }
-                    });
+                      setSearchTerm(e.target.value);
+                      handleChange({
+                        target: {
+                          name: 'address',
+                          value: e.target.value
+                        }
+                      });
                     }
                   }}
-                  disabled={isExistingCustomer} // Disable input field for existing customers
+                  disabled={isExistingCustomer}
                 />
               </div>
               
-              {/* City suggestions dropdown - only show for new customers */}
               {!isExistingCustomer && suggestedCities.length > 0 && (
                 <div className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg">
                   <ul className="max-h-60 overflow-auto py-1">
@@ -779,7 +783,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                             order.items.map((item, idx) => (
                               <li key={idx}>
                                 {typeof item === 'object' 
-                                  ? `${item.quantity || '1'}x ${item.item_name || (item.item_id ? `Item #${item.item_id.substring(item.item_id.length - 6)}` : 'Unknown Item')}`
+                                  ? `${item.quantity || '1'}x ${item.item_id.item_name || (item.item_id._id ? `Item #${item.item_id._id.substring(item.item_id._id.length - 6)}` : 'Unknown Item')}`
                                   : String(item)}
                               </li>
                             ))
@@ -788,7 +792,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                           )}
                         </ul>
                         
-                        {/* Additional order details */}
                         <div className="mt-3 pt-2 border-t border-gray-100">
                           <div className="grid grid-cols-2 gap-2">
                             <div>
