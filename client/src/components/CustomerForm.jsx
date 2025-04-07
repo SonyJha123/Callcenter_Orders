@@ -215,7 +215,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           userData.email = values.email.trim();
         }
 
-
         const response = await createUser(userData).unwrap();
 
         if (response && response.status === 200 && response.User) {
@@ -248,7 +247,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
 
-
           findCityFromCoordinates(latitude, longitude, setFieldValue);
         },
         (error) => {
@@ -269,7 +267,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
       const cityName = data.address.city || data.address.town || data.address.village || data.address.hamlet;
       const stateName = data.address.state;
       const countryName = data.address.country;
-
 
       const fullAddress = `${cityName || ''}${cityName && stateName ? ', ' : ''}${stateName || ''}${(cityName || stateName) && countryName ? ', ' : ''}${countryName || ''}`;
 
@@ -306,7 +303,6 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
   };
 
   const handleReorder = async (order) => {
-
     if (order.rawData && order.rawData.items) {
     }
     if (order.items) {
@@ -503,6 +499,43 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
       </div>
     );
   };
+
+  const renderOrderItems = (order) => {
+      if (!order.items || !Array.isArray(order.items) || order.items.length === 0) {
+        return <li>No item details available</li>;
+      }
+  
+      return (
+        <ul className="space-y-2">
+          {order.items.map((item, idx) => (
+            <li key={idx}>
+              <Card key={idx} className="p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={item.image || item.item_id.image || 'https://via.placeholder.com/40'}
+                      alt={item.name || item.item_id.itemName || item.itemName || 'Item'}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <p className="font-medium text-sm">{item.name || item.item_id.itemName || item.itemName || 'Unknown Item'}</p>
+                        <p className="text-sm font-medium text-app-primary">₹{(item.price || 0).toFixed(2)}</p>
+                      </div>
+                      {item.quantity > 1 && (
+                        <p className="text-xs text-gray-500">
+                          Quantity: {item.quantity}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      );
+    };
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
@@ -720,103 +753,72 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           </button>
 
           {isHistoryExpanded && (
-            <div className="mt-3 space-y-3">
-              {customerData.previousOrders.map((order, index) => (
-                <div key={order.id || index} className="bg-gray-50 rounded-lg border border-gray-100 overflow-hidden transition-all">
-                  <button
-                    type="button"
-                    onClick={() => toggleOrderExpand(order.id || index)}
-                    className="w-full flex justify-between items-center p-3 text-left hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <ShoppingBag size={14} className="text-app-primary" />
-                      <span className="text-xs font-medium">Order #{order.id || (order.rawData && order.rawData._id) || index}</span>
-                      <span className="text-xs text-gray-500">
-                        {order.date ? formatDistanceToNow(new Date(order.date), { addSuffix: true }) : 'Previous order'}
-                      </span>
-                      {order.status && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${order.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
-                            order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                              order.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
-                                'bg-blue-100 text-blue-700'
-                          }`}>
-                          {order.status}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-app-primary">₹{Math.abs(order.subtotal + order.tax - order.total - order.delivery_fees + 1 || 0).toFixed(2)}</span>
-                      {expandedOrderId === (order.id || index) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </div>
-                  </button>
-
-                  {expandedOrderId === (order.id || index) && (
-                    <div className="px-3 pb-3">
-                      <div className="bg-white p-2 rounded border text-xs mb-2">
-                        <p className="font-medium mb-1">Items:</p>
-                        <ul className="list-disc list-inside space-y-1 text-gray-600">
-                          {Array.isArray(order.items) && order.items.length > 0 ? (
-                            order?.items.map((item, idx) => (
-                              <li key={idx}>
-                                {typeof item === 'object'
-                                  ? <>
-                                    <Card key={idx} className="p-3">
-                                      <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-3">
-                                          <img
-                                            src={item.item_id.image || 'https://via.placeholder.com/40'}
-                                            alt={item.item_id.itemName || item.item_id.name}
-                                            className="w-10 h-10 rounded-full object-cover"
-                                          />
-                                          <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-start">
-                                              <p className="font-medium text-sm">{item.item_id.itemName || item.item_id.name}</p>
-                                              <p className="text-sm font-medium text-app-primary">₹{(item.item_id.basePrice || item.item_id.price).toFixed(2)}</p>
-                                            </div>
-
-                                          </div>
-                                        </div>
+                      <div className="mt-3 space-y-3">
+                        {customerData.previousOrders.map((order, index) => (
+                          <div key={order.id || index} className="bg-gray-50 rounded-lg border border-gray-100 overflow-hidden transition-all">
+                            <button
+                              type="button"
+                              onClick={() => toggleOrderExpand(order.id || index)}
+                              className="w-full flex justify-between items-center p-3 text-left hover:bg-gray-100 transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <ShoppingBag size={14} className="text-app-primary" />
+                                <span className="text-xs font-medium">Order #{order.id || index}</span>
+                                <span className="text-xs text-gray-500">
+                                  {order.date ? formatDistanceToNow(new Date(order.date), { addSuffix: true }) : 'Previous order'}
+                                </span>
+                                {order.status && (
+                                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                    order.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+                                    order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                                    order.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                                    'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    {order.status}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-semibold text-app-primary">₹{order.subtotal.toFixed(2)}</span>
+                                {expandedOrderId === (order.id || index) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </div>
+                            </button>
+          
+                            {expandedOrderId === (order.id || index) && (
+                              <div className="px-3 pb-3">
+                                <div className="bg-white p-2 rounded border text-xs mb-2">
+                                  <p className="font-medium mb-1">Items:</p>
+                                  {renderOrderItems(order)}
+          
+                                  <div className="mt-3 pt-2 border-t border-gray-100">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <p className="text-gray-500">Payment Method</p>
+                                        <p className="font-medium">{order.paymentMethod || 'Cash'}</p>
                                       </div>
-                                    </Card>
-                                  </>
-                                  : String(item)
-                                }
-                              </li>
-                            ))
-                          ) : (
-                            <li>No item details available</li>
-                          )}
-                        </ul>
-
-                        <div className="mt-3 pt-2 border-t border-gray-100">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <p className="text-gray-500">Payment Method</p>
-                              <p className="font-medium">{order.paymentMethod || 'Cash'}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Delivery Mode</p>
-                              <p className="font-medium">{order.deliveryMode === 'HOME_DELIVERY' ? 'Home Delivery' : 'Takeaway'}</p>
-                            </div>
+                                      <div>
+                                        <p className="text-gray-500">Delivery Mode</p>
+                                        <p className="font-medium">{order.deliveryMode === 'HOME_DELIVERY' ? 'Home Delivery' : 'Takeaway'}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+          
+                                <div className="flex justify-end">
+                                  <button
+                                    type="button"
+                                    className="text-xs px-3 py-1 bg-app-primary text-white rounded-md hover:bg-app-primary/90 transition-colors"
+                                    onClick={() => handleReorder(order)}
+                                  >
+                                    Reorder Items
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
+                        ))}
                       </div>
-
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          className="text-xs px-3 py-1 bg-app-primary text-white rounded-md hover:bg-app-primary/90 transition-colors"
-                          onClick={() => handleReorder(order)}
-                        >
-                          Reorder Items
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                    )}
         </div>
       )}
     </div>

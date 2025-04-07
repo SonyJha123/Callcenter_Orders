@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useToast } from "../hooks/use-toast";
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { ShoppingCart, Tag, Trash2, Plus, Minus, Loader2 } from "lucide-react";
+import { ShoppingCart, Tag, Trash2, Plus, Minus, Loader2, AlertCircle } from "lucide-react";
 import { useCreateOrderMutation } from '../redux/services/restaurantApi';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
@@ -43,14 +43,14 @@ const validationSchema = Yup.object().shape({
     .required('Please select a payment method')
 });
 
-const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrderSuccess }) => {
-  const [couponCode, setCouponCode] = useState('CULPA SED IN REPELLE');
+const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity, customerData, onOrderSuccess }) => {
+  const [couponCode, setCouponCode] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [deliveryMode, setDeliveryMode] = useState('TAKEAWAY');
-  const [additionalNotes, setAdditionalNotes] = useState('Dolores vero ullamco');
-  const [promoDiscount, setPromoDiscount] = useState(94);
-  const [additionalCharge, setAdditionalCharge] = useState(57);
-  const [remainingBalance, setRemainingBalance] = useState(94);
+  const [additionalNotes, setAdditionalNotes] = useState('');
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [additionalCharge, setAdditionalCharge] = useState(0);
+  const [remainingBalance, setRemainingBalance] = useState(0);
   const [agentFields, setAgentFields] = useState({
     user_id: '',
     customer_name: '',
@@ -75,16 +75,29 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
   
   const calculateItemTotal = (item) => {
-    const basePrice = parseFloat(item.basePrice || item.price);
-    const addOnTotal = item.addOns?.reduce((sum, addOn) => sum + parseFloat(addOn.price) * (addOn.quantity || 1), 0) || 0;
-    return (basePrice + addOnTotal) * item.quantity;
+    
+    const basePrice = parseFloat(item.basePrice || item.price || 0);
+    
+    const addOnTotal = Array.isArray(item.addOns) 
+      ? item.addOns.reduce((sum, addOn) => {
+          const addOnPrice = parseFloat(addOn.price || 0);
+          const addOnQuantity = addOn.quantity || 1;
+          return sum + (addOnPrice * addOnQuantity);
+        }, 0) 
+      : 0;
+    
+    const itemQuantity = item.quantity || 1;
+    
+    const total = (basePrice*itemQuantity + addOnTotal);
+    
+    return total;
   };
   
-  const calculateAddOnsTotal = (addOns) => {
-    return addOns?.reduce((sum, addOn) => sum + parseFloat(addOn.price) * (addOn.quantity || 1), 0) || 0;
+  const calculateSubtotal = () => {
+    return cartItems.reduce((sum, item) => sum + calculateItemTotal(item), 0);
   };
   
-  const subtotal = cartItems.reduce((sum, item) => sum + calculateItemTotal(item), 0);
+  const subtotal = calculateSubtotal();
   const tax = Math.round(subtotal * 0.05 * 100) / 100;
   const deliveryFee = subtotal > 0 ? 40 : 0;
   const discount = 0;
@@ -100,6 +113,15 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
   ) * 100) / 100;
 
   const handleApplyCoupon = () => {
+    if (!couponCode.trim()) {
+      toast({
+        title: "No Coupon Code",
+        description: "Please enter a coupon code first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     toast({
       title: "Coupon Status",
       description: "This coupon code is invalid or expired.",
@@ -108,7 +130,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
   };
 
   const resetAllFields = () => {
-    onRemoveItem(-1);
+    onRemoveItem(-1); // Clear all cart items
     setAgentFields({
       user_id: '',
       customer_name: '',
@@ -126,18 +148,9 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
     setDeliveryMode('TAKEAWAY');
   };
 
-  const initialValues = {
-    customer_name: customerData?.name || '',
-    customer_phone: customerData?.phone || '',
-    customer_email: customerData?.email || '',
-    pickup_address: customerData?.address || '',
-    delivery_address: customerData?.address || '',
-    payment_method: paymentMethod,
-    delivery_mode: deliveryMode
-  };
-
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
+      
       const newErrors = {};
       
       if (cartItems.length === 0) {
@@ -183,12 +196,14 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
         items: cartItems.map(item => ({
           item_id: item.originalItemId || item._id,
           quantity: item.quantity,
-          price: item.price || item.basePrice,
-          addOns: item.addOns ? item.addOns.map(addOn => ({
-            ...addOn,
-            quantity: addOn.quantity || 1
+          price: parseFloat(item.price || item.basePrice || 0),
+          addOns: Array.isArray(item.addOns) ? item.addOns.map(addOn => ({
+            _id: addOn._id || addOn.id,
+            quantity: addOn.quantity || 1,
+            price: parseFloat(addOn.price || 0),
+            name: addOn.name || addOn.itemName
           })) : [],
-          spicyPreference: item.spicyPreference || '',
+          spicyPreference: item.spicyPreferences || [],
           specialInstructions: item.specialInstructions || ''
         })),
         subtotal,
@@ -215,7 +230,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
       
       toast({
         title: "Order Placed Successfully!",
-        description:` Order #${response.orderId || ''} has been confirmed.`,
+        description:` Order #${response.orderId || response._id || ''} has been confirmed.`,
       });
       
       resetAllFields();
@@ -252,20 +267,98 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
     }
   }, [customerData]);
 
-  const getItemUniqueKey = (item) => {
-    if (item.cartItemId) {
-      return item.cartItemId;
+  const renderAddOns = (item) => {
+    if (!item.addOns || item.addOns.length === 0) {
+      return null;
     }
     
-    const addOnsKey = item.addOns && item.addOns.length > 0 ? 
-      JSON.stringify(item.addOns.map(a => a._id).sort()) : 'no-addons';
-    
-    const spicyKey = item.spicyPreferences ? 
-      JSON.stringify(item.spicyPreferences) : 'no-spicy';
-      
-    const instructions = item.specialInstructions || 'no-instructions';
-    
-    return `${item._id}-${addOnsKey}-${spicyKey}-${instructions}`;
+    return (
+      <div className="mt-3 space-y-2 bg-gray-50 p-2 rounded-md">
+        <div className="flex items-center gap-1 mb-2">
+          <Tag className="h-3.5 w-3.5 text-gray-700" />
+          <p className="text-xs font-medium text-gray-700">Add-ons</p>
+        </div>
+        {item.addOns.map((addOn, index) => (
+          <div 
+            key={`${item.cartItemId}-addon-${addOn._id || index}`} 
+            className="flex flex-col border-b border-gray-200 pb-2 mb-2 last:border-0 last:mb-0 last:pb-0"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{addOn.name || addOn.itemName}</p>
+                <p className="text-xs text-gray-500">₹{parseFloat(addOn.price || 0).toFixed(2)}</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => onUpdateAddonQuantity(item.cartItemId, addOn._id, Math.max(0, (addOn.quantity || 1) - 1))}
+                  className="p-1 rounded-full hover:bg-gray-200 text-gray-600"
+                  type="button"
+                >
+                  <Minus className="h-3 w-3" />
+                </button>
+                <span className="w-6 text-center text-sm font-medium">{addOn.quantity || 1}</span>
+                <button 
+                  onClick={() => onUpdateAddonQuantity(item.cartItemId, addOn._id, (addOn.quantity || 1) + 1)}
+                  className="p-1 rounded-full hover:bg-gray-200 text-gray-600"
+                  type="button"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end text-xs text-gray-700 mt-1">
+              <span>Total: ₹{((parseFloat(addOn.price || 0) * (addOn.quantity || 1))).toFixed(2)}</span>
+            </div>
+          </div>
+        ))}
+        <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t border-gray-300">
+          <span>Add-ons Total</span>
+          <span>₹{(item.addOns.reduce((sum, addOn) => sum + parseFloat(addOn.price || 0) * (addOn.quantity || 1), 0)).toFixed(2)}</span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSpicyPreferences = (preferences) => {
+    if (!preferences || preferences.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {preferences.map((pref, index) => (
+          <span 
+            key={index}
+            className={`text-xs px-1.5 py-0.5 rounded ${
+              pref === 'Not Spicy' ? 'bg-green-100 text-green-700' :
+              pref === 'Normal' ? 'bg-blue-100 text-blue-700' :
+              pref === 'Spicy' ? 'bg-orange-100 text-orange-700' :
+              'bg-red-100 text-red-700'
+            }`}
+          >
+            {pref}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  const renderSpecialInstructions = (instructions) => {
+    if (!instructions) {
+      return null;
+    }
+
+    return (
+      <div className="mt-2">
+        <div className="flex items-center gap-1 mb-1">
+          <AlertCircle className="h-3 w-3 text-gray-600" />
+          <p className="text-xs font-medium text-gray-600">Special Instructions</p>
+        </div>
+        <p className="text-xs text-gray-600 bg-gray-50 rounded-md p-2 italic">
+          {instructions}
+        </p>
+      </div>
+    );
   };
 
   return (
@@ -279,52 +372,22 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
           <div className="space-y-3">
             <h3 className="font-medium text-gray-700">Selected Items</h3>
             {cartItems.map((item) => (
-              <Card key={getItemUniqueKey(item)} className="p-3">
+              <Card key={item.cartItemId} className="p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
                     <img
-                      src={item.image || 'https://via.placeholder.com/40'}
-                      alt={item.itemName || item.name}
+                      src={item.image  || item.item_id.image ||'https://via.placeholder.com/40'}
+                      alt={item.itemName ||  item.item_id.itemName || item.name}
                       className="w-10 h-10 rounded-full object-cover"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start">
-                        <p className="font-medium text-sm">{item.itemName || item.name}</p>
-                        <p className="text-sm font-medium text-app-primary">₹{(item.basePrice || item.price).toFixed(2)}</p>
+                        <p className="font-medium text-sm">{item.itemName || item.name ||item.item_id.itemName}</p>
+                        <p className="text-sm font-medium text-app-primary">₹{(item.basePrice || item.price || 0).toFixed(2)}</p>
                       </div>
                       
-                      {item.spicyPreferences?.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {item.spicyPreferences.map((pref, index) => (
-                            <span 
-                              key={index}
-                              className={`text-xs px-1.5 py-0.5 rounded ${
-                                pref === 'Not Spicy' ? 'bg-green-100 text-green-700' :
-                                pref === 'Normal' ? 'bg-blue-100 text-blue-700' :
-                                pref === 'Spicy' ? 'bg-orange-100 text-orange-700' :
-                                'bg-red-100 text-red-700'
-                              }`}
-                            >
-                              {pref}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {item.specialInstructions && (
-                        <div className="mt-2">
-                          <div className="flex items-center gap-1 mb-1">
-                            <svg className="h-3 w-3 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                            <p className="text-xs font-medium text-gray-600">Special Instructions</p>
-                          </div>
-                          <p className="text-xs text-gray-600 bg-gray-50 rounded-md p-2 italic">
-                            {item.specialInstructions}
-                          </p>
-                        </div>
-                      )}
+                      {renderSpicyPreferences(item.spicyPreferences)}
+                      {renderSpecialInstructions(item.specialInstructions)}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
@@ -333,9 +396,9 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                         onClick={() => {
                           const newQty = Math.max(0, item.quantity - 1);
                           if (newQty === 0) {
-                            onRemoveItem(item.cartItemId || item._id);
+                            onRemoveItem(item.cartItemId);
                           } else {
-                            onUpdateQuantity(item.cartItemId || item._id, newQty);
+                            onUpdateQuantity(item.cartItemId, newQty);
                           }
                         }}
                         className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600"
@@ -344,13 +407,13 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                       </button>
                       <span className="w-8 text-center font-medium">{item.quantity}</span>
                       <button 
-                        onClick={() => onUpdateQuantity(item.cartItemId || item._id, item.quantity + 1)}
+                        onClick={() => onUpdateQuantity(item.cartItemId, item.quantity + 1)}
                         className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600"
                       >
                         <Plus className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => onRemoveItem(item.cartItemId || item._id)}
+                        onClick={() => onRemoveItem(item.cartItemId)}
                         className="p-1.5 rounded-full hover:bg-red-50 text-red-500"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -358,116 +421,25 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                     </div>
                   </div>
                 </div>
+                
+                {renderAddOns(item)}
+                
                 <div className="mt-2 pt-2 border-t space-y-1">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Base Price (₹{(item.basePrice || item.price).toFixed(2)} × {item.quantity})</span>
-                    <span>₹{((item.basePrice || item.price) * item.quantity).toFixed(2)}</span>
+                    <span className="text-gray-600">Base Price (₹{(item.basePrice || item.price || 0).toFixed(2)} × {item.quantity})</span>
+                    <span>₹{((item.basePrice || item.price || 0) * item.quantity).toFixed(2)}</span>
                   </div>
-                  {/* {item.addOns?.length > 0 && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Add-ons Total</span>
-                      <span>₹{(item.addOns.reduce((sum, addOn) => sum + parseFloat(addOn.price) * (addOn.quantity || 1), 0) * item.quantity).toFixed(2)}</span>
-                    </div>
-                  )} */}
-                  {/* <div className="flex justify-between items-center text-sm font-medium pt-1 border-t">
+                  <div className="flex justify-between items-center text-sm font-medium pt-1 border-t">
                     <span className="text-gray-700">Item Total</span>
                     <span className="text-app-primary">₹{calculateItemTotal(item).toFixed(2)}</span>
-                  </div> */}
+                  </div>
                 </div>
               </Card>
             ))}
-
-            {/* Add-ons Section */}
-            {cartItems.some(item => item.addOns && item.addOns.length > 0) && (
-              <div className="mt-6">
-                <h3 className="font-medium text-gray-700 mb-2">Add-on Items</h3>
-                {cartItems.map(item => 
-                  item.addOns && item.addOns.length > 0 ? (
-                    <div key={`addons-${item.cartItemId || item._id}`} className="mb-2">
-                      <p className="text-xs font-medium text-gray-600 mb-1">Add-ons for {item.itemName || item.name}</p>
-                      {item.addOns.map(addOn => (
-                        <Card key={`${item.cartItemId || item._id}-addon-${addOn._id}`} className="p-3 mb-2 border-l-2 border-l-app-primary/50">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="font-medium text-sm">{addOn.itemName || addOn.name}</p>
-                                  <p className="text-xs text-gray-500">Add-on for {item.itemName || item.name}</p>
-                                </div>
-                                <p className="text-sm font-medium text-app-primary">₹{parseFloat(addOn.price).toFixed(2)}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => {
-                                  const newAddOns = [...item.addOns];
-                                  const addOnIndex = newAddOns.findIndex(a => a._id === addOn._id);
-                                  if (addOnIndex !== -1) {
-                                    if (addOn.quantity > 1) {
-                                      newAddOns[addOnIndex] = { ...addOn, quantity: (addOn.quantity || 1) - 1 };
-                                    } else {
-                                      newAddOns.splice(addOnIndex, 1);
-                                    }
-                                    const updatedItem = { 
-                                      ...item, 
-                                      addOns: newAddOns 
-                                    };
-                                    onUpdateQuantity(item.cartItemId || item._id, item.quantity, updatedItem);
-                                  }
-                                }}
-                                className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600"
-                              >
-                                <Minus className="h-4 w-4" />
-                              </button>
-                              <span className="w-8 text-center font-medium">{addOn.quantity || 1}</span>
-                              <button 
-                                onClick={() => {
-                                  const newAddOns = [...item.addOns];
-                                  const addOnIndex = newAddOns.findIndex(a => a._id === addOn._id);
-                                  if (addOnIndex !== -1) {
-                                    newAddOns[addOnIndex] = { ...addOn, quantity: (addOn.quantity || 1) + 1 };
-                                    const updatedItem = { 
-                                      ...item, 
-                                      addOns: newAddOns 
-                                    };
-                                    onUpdateQuantity(item.cartItemId || item._id, item.quantity, updatedItem);
-                                  }
-                                }}
-                                className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600"
-                              >
-                                <Plus className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const newAddOns = item.addOns.filter(a => a._id !== addOn._id);
-                                  const updatedItem = { 
-                                    ...item, 
-                                    addOns: newAddOns 
-                                  };
-                                  onUpdateQuantity(item.cartItemId || item._id, item.quantity, updatedItem);
-                                }}
-                                className="p-1.5 rounded-full hover:bg-red-50 text-red-500"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="mt-2 pt-2 border-t space-y-1">
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-gray-600">Add-on Price (₹{parseFloat(addOn.price).toFixed(2)} × {addOn.quantity || 1})</span>
-                              <span>₹{(parseFloat(addOn.price) * (addOn.quantity || 1)).toFixed(2)}</span>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : null
-                )}
-              </div>
-            )}
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
+            <ShoppingCart className="h-12 w-12 mx-auto mb-2 text-gray-300" />
             Your cart is empty
           </div>
         )}
@@ -647,24 +619,40 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
                 <span>-₹{discount.toFixed(2)}</span>
               </div>
             )}
-            {promoDiscount > 0 && (
-              <div className="flex justify-between text-green-600">
-                <span>Promo Discount</span>
-                <span>-₹{promoDiscount.toFixed(2)}</span>
+            
+            {(promoDiscount > 0 || additionalCharge > 0 || remainingBalance > 0) && (
+              <div className="p-3 bg-gray-50 rounded-md mt-2">
+                <p className="text-sm font-medium text-gray-700 mb-2">Price Adjustments:</p>
+                <div className="space-y-2 text-sm">
+                  {promoDiscount > 0 && (
+                    <div className="flex justify-between">
+                      <span>Promo Discount</span>
+                      <span className="text-green-600">-₹{promoDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {additionalCharge > 0 && (
+                    <div className="flex justify-between">
+                      <span>Additional Charge</span>
+                      <span>+₹{additionalCharge.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {remainingBalance > 0 && (
+                    <div className="flex justify-between">
+                      <span>Remaining Balance</span>
+                      <span className="text-green-600">-₹{remainingBalance.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-medium pt-2 border-t">
+                    <span>Net Adjustment</span>
+                    <span className={((promoDiscount + remainingBalance) > additionalCharge) ? "text-green-600" : ""}>
+                      {((promoDiscount + remainingBalance) > additionalCharge) ? "-" : "+"}
+                      ₹{Math.abs(additionalCharge - promoDiscount - remainingBalance).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
-            {additionalCharge > 0 && (
-              <div className="flex justify-between">
-                <span>Additional Charges</span>
-                <span>₹{additionalCharge.toFixed(2)}</span>
-              </div>
-            )}
-            {remainingBalance > 0 && (
-              <div className="flex justify-between text-green-600">
-                <span>Remaining Balance</span>
-                <span>-₹{remainingBalance.toFixed(2)}</span>
-              </div>
-            )}
+            
             <div className="flex justify-between font-medium text-base pt-2 border-t">
               <span>Total</span>
               <span>₹{total.toFixed(2)}</span>
@@ -689,4 +677,4 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, customerData, onOrder
   );
 };
 
-export default Cart;
+export default Cart;

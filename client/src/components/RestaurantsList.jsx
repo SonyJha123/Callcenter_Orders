@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import SearchBar from './SearchBar';
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Tag } from "lucide-react";
 import { 
   useGetMenuListQuery,
   useGetAllItemsQuery,
@@ -20,10 +20,15 @@ const SPICY_LEVELS = [
 ];
 
 const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreferences, onSpicyChange, addOns, onAddOnToggle, onAddOnToggleChange, specialInstructions, onInstructionsChange }) => {
-  // Normalize item properties to handle different structures
   const itemName = item.itemName || item.name || item.title || '';
   const itemPrice = parseFloat(item.price) || 0;
   const itemImage = item.image || item.imageUrl || item.img || 'https://via.placeholder.com/50';
+  
+  useEffect(() => {
+    if (isSelected) {
+    }
+  }, [isSelected, item._id, addOns]);
+
   return (
     <div
       className={`${
@@ -37,7 +42,6 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
             : 'bg-white hover:bg-gray-50 border hover:shadow-md h-[140px]'
         }`}
       >
-        {/* Item Header - Always Visible */}
         <div 
           onClick={() => onSelect(item)}
           className={`flex flex-col items-center p-4 cursor-pointer ${isSelected ? 'pb-2' : 'h-full'}`}
@@ -62,10 +66,8 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
           <span className="text-sm font-bold mt-2 text-app-primary">₹{itemPrice.toFixed(2)}</span>
         </div>
 
-        {/* Expanded Content - Visible when Selected */}
         {isSelected && (
           <div className="p-4 border-t bg-gradient-to-b from-gray-50 to-white">
-            {/* Spicy Preference */}
             <div className="mb-4">
               <label className="block text-xs font-medium mb-2 text-gray-600">Spicy Levels (Select Multiple)</label>
               <div className="grid grid-cols-2 gap-2">
@@ -93,15 +95,17 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
               </div>
             </div>
 
-            {/* Add-ons Section */}
-            {addOns?.data?.length > 0 && (
+            {addOns && addOns.data && addOns.data.length > 0 ? (
               <div className="mb-4">
-                <label className="block text-xs font-medium mb-2 text-gray-600">Add-ons</label>
+                <div className="flex items-center gap-1 mb-2">
+                  <Tag className="h-3.5 w-3.5 text-gray-600" />
+                  <label className="text-xs font-medium text-gray-600">Add-ons</label>
+                </div>
                 <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                  {addOns?.data?.map(addOn => (
+                  {addOns.data.map(addOn => (
                     <label 
                       key={addOn._id} 
-                       className={`flex items-center justify-between p-2 rounded border transition-all ${
+                      className={`flex items-center justify-between p-2 rounded border transition-all ${
                         onAddOnToggle(item._id, addOn)
                           ? 'bg-app-primary/5 border-app-primary'
                           : 'bg-white hover:bg-gray-50 border-gray-200'
@@ -114,16 +118,35 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
                           onChange={() => onAddOnToggleChange(item._id, addOn)}
                           className="mr-2 text-app-primary rounded border-gray-300 focus:ring-app-primary"
                         />
-                        <span className="text-sm">{addOn.itemName}</span>
+                        <span className="text-sm">{addOn.itemName || addOn.name}</span>
                       </div>
                       <span className="text-app-primary font-medium text-sm">₹{addOn.price}</span>
                     </label>
                   ))}
                 </div>
+                
+                {onAddOnToggle && (
+                  <div className="mt-2 text-xs text-gray-600">
+                    {addOns.data.filter(addOn => onAddOnToggle(item._id, addOn)).length > 0 && (
+                      <div className="flex justify-between pt-1 border-t">
+                        <span>Selected Add-ons ({addOns.data.filter(addOn => onAddOnToggle(item._id, addOn)).length})</span>
+                        <span>₹{addOns.data.filter(addOn => onAddOnToggle(item._id, addOn))
+                          .reduce((sum, addOn) => sum + parseFloat(addOn.price), 0).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mb-4">
+                <div className="flex items-center gap-1 mb-2">
+                  <Tag className="h-3.5 w-3.5 text-gray-600" />
+                  <label className="text-xs font-medium text-gray-600">Add-ons</label>
+                </div>
+                <p className="text-xs text-gray-500 italic p-2 border rounded">No add-ons available for this item</p>
               </div>
             )}
 
-            {/* Special Instructions */}
             <div className="mb-4">
               <label className="block text-xs font-medium mb-2 text-gray-600">Special Instructions</label>
               <textarea
@@ -136,7 +159,6 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
               />
             </div>
 
-            {/* Add to Cart Button */}
             <button
               className="w-full bg-app-primary text-white font-medium py-2.5 px-4 rounded-lg hover:bg-app-primary/90 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg"
               onClick={(e) => {
@@ -154,6 +176,7 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
 };
 
 const RestaurantsList = ({ onMenuItemSelect }) => {
+  
   const [selectedMenu, setSelectedMenu] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectedAddOns, setSelectedAddOns] = useState({});
@@ -165,7 +188,6 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
 
   const { toast } = useToast();
   
-  // API Query hooks
   const { data: menusData, isLoading: isLoadingMenus, error: menusError } = useGetMenuListQuery();
   const { data: allItemsData, isLoading: isLoadingAllItems } = useGetAllItemsQuery();
   const { data: menuItemsData, isLoading: isLoadingMenuItems } = useGetItemsByMenuIdQuery(
@@ -174,88 +196,81 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   );
   const { data: searchData, isLoading: isSearching } = useSearchItemsQuery(
     searchTerm,
-    { skip: !searchTerm }
+    { skip: !searchTerm || searchTerm.length < 2 }
   );
-  const { data: addOnsData, isLoading: isLoadingAddOns } = useGetAddOnsQuery(
-    selectedItems.length > 0 ? selectedItems[0]._id : null,
-    { skip: selectedItems.length === 0 }
-  );
-
-  // Log API responses for debugging
+  
   useEffect(() => {
-    if (menusData) {
-      if (Array.isArray(menusData)) {
-        menusData.forEach(menu => {
-        });
-      } else if (typeof menusData === 'object') {
-        // If it's an object with menus property
-        if (menusData.menus && Array.isArray(menusData.menus)) {
-        }
-      }
+    if (searchData) {
     }
-  }, [menusData, addOnsData, searchData]);
+  }, [searchData]);
+  
+  const { 
+    data: addOnsData, 
+    isLoading: isLoadingAddOns,
+    error: addOnsError
+  } = useGetAddOnsQuery(
+    selectedItems.length > 0 ? selectedItems[0]._id : null,
+    { 
+      skip: selectedItems.length === 0,
+      refetchOnMountOrArgChange: true
+    }
+  );
 
-  // Store all items when they're loaded
+  useEffect(() => {
+    if (addOnsError) {
+      console.error("Error loading add-ons:", addOnsError);
+    }
+  }, [addOnsData, selectedItems, isLoadingAddOns, addOnsError]);
+
   useEffect(() => {
     if (allItemsData) {
       setAllItems(allItemsData);
       
-      // If no specific menu or search is selected, show all items
       if (!selectedMenu && !searchTerm) {
         setFilteredItems(allItemsData);
       }
-     
     }
   }, [allItemsData, selectedMenu, searchTerm]);
 
-  // Update filtered items when search results arrive
   useEffect(() => {
     if (searchTerm && searchData) {
-      setFilteredItems(searchData.data);
+      if (Array.isArray(searchData)) {
+        setFilteredItems(searchData);
+      } else if (searchData.data && Array.isArray(searchData.data)) {
+        setFilteredItems(searchData.data);
+      }
     } else if (!searchTerm && !selectedMenu) {
       setFilteredItems(allItems);
     }
   }, [searchData, searchTerm, selectedMenu, allItems]);
 
-  // Handle menu-specific items from the API
   useEffect(() => {
     if (selectedMenu) {
-      
       if (menuItemsData) {
-        
-        // Check different possible structures for the API response
         let items = [];
         
         if (Array.isArray(menuItemsData)) {
           items = menuItemsData;
         } else if (menuItemsData.items && Array.isArray(menuItemsData.items)) {
           items = menuItemsData.items;
-        } else if (typeof menuItemsData === 'object') {
         }
         
-        // If we found items in any format, use them
         if (items.length > 0) {
           setFilteredItems(items);
         } else {
-          // Otherwise fall back to client-side filtering
           filterItemsByMenuId(selectedMenu._id);
         }
       } else if (!isLoadingMenuItems) {
-        // menuItemsData is null/undefined but not loading - fall back to client-side filtering
         filterItemsByMenuId(selectedMenu._id);
       }
     }
   }, [selectedMenu, menuItemsData, isLoadingMenuItems, allItems]);
 
-  // Filter items based on selected menu
   const filterItemsByMenuId = (menuId) => {
     if (!menuId || !allItems || allItems.length === 0) {
       return;
     }
     
-    
-    // Filter all items that belong to the selected menu
-    // Check various possible field names that could associate items with menus
     const menuItems = allItems.filter(item => {
       const matches = 
         item.menuId === menuId || 
@@ -278,7 +293,6 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   const handleMenuClick = (menu) => {
     setSelectedMenu(menu);
     setSelectedItems([]);
-    // Filtering will be handled by the useEffect watching selectedMenu and menuItemsData
   };
 
   const handleClearMenuFilter = () => {
@@ -290,10 +304,8 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
     const isAlreadySelected = selectedItems.some(selectedItem => selectedItem._id === item._id);
     
     if (isAlreadySelected) {
-      // Remove the item
       setSelectedItems(prevItems => prevItems.filter(prevItem => prevItem._id !== item._id));
       
-      // Clean up related data
       if (spicyPreferences[item._id]) {
         setSpicyPreferences(prev => {
           const updated = { ...prev };
@@ -318,26 +330,22 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
         });
       }
     } else {
-      // Add the item
-      setSelectedItems(prevItems => [...prevItems, item]);
+      setSelectedItems(prevItems => {
+        return [item];
+      });
     }
   };
 
   const handleAddToCart = (item) => {
-    
-    // Normalize item properties
     const itemName = item.itemName || item.name || item.title || '';
     const itemPrice = parseFloat(item.price) || 0;
     const itemImage = item.image || item.imageUrl || item.img || 'https://via.placeholder.com/50';
     
-    // Get any add-ons for this item
     const itemAddOns = selectedAddOns[item._id] || [];
     
-    // Get special instructions and spicy preferences
     const instructions = specialInstructions[item._id] || '';
     const spicy = spicyPreferences[item._id] || [];
     
-    // Format the item for the cart
     const cartItem = {
       _id: item._id,
       itemName: itemName,
@@ -351,19 +359,15 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
     };
     
     
-    // Pass to parent component
     onMenuItemSelect(cartItem);
     
-    // Show success notification
     toast({
       title: "Item Added",
       description: `${itemName} has been added to your cart.`
     });
     
-    // Reset selection for this item
     setSelectedItems(prevItems => prevItems.filter(it => it._id !== item._id));
     
-    // Clean up related data
     setSpicyPreferences(prev => {
       const updated = { ...prev };
       delete updated[item._id];
@@ -389,10 +393,8 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
       const levelIndex = currentSelections.indexOf(spicyLevel);
       
       if (levelIndex !== -1) {
-        // Remove this level
         currentSelections.splice(levelIndex, 1);
       } else {
-        // Add this level
         currentSelections.push(spicyLevel);
       }
       
@@ -421,12 +423,11 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
       const addOnIndex = currentAddOns.findIndex(a => a._id === addOn._id);
       
       if (addOnIndex !== -1) {
-        // Remove this add-on
         currentAddOns.splice(addOnIndex, 1);
       } else {
-        // Add this add-on
         currentAddOns.push(addOn);
       }
+      
       
       return {
         ...prev,
@@ -438,15 +439,12 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
   const handleSearchChange = (term) => {
     setSearchTerm(term);
     
-    // Clear search - revert to menu filter or all items
     if (!term) {
       if (selectedMenu) {
         filterItemsByMenuId(selectedMenu._id);
       } else {
         setFilteredItems(allItems);
       }
-    } else {
-      // When search term is entered, searchData effect will handle the response
     }
   };
 
@@ -465,7 +463,6 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
 
   return (
     <div>
-      {/* Search Bar */}
       <div className="mb-6">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -481,7 +478,6 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
         </div>
       </div>
 
-      {/* Menus List */}
       {isLoadingMenus ? (
         renderLoading()
       ) : menusError ? (
@@ -501,7 +497,6 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
             >
               All Items
             </button>
-            {/* Check different possible data structures for menu response */}
             {Array.isArray(menusData) ? (
               menusData.map(menu => (
                 <button
@@ -537,7 +532,6 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
         </div>
       )}
 
-      {/* Menu Items */}
       {isSearching ? (
         <div className="mt-4">
           <h3 className="font-medium text-gray-700 mb-3">Searching...</h3>
@@ -563,17 +557,17 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
             {filteredItems && filteredItems.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {filteredItems.map(item => (
-                <MenuItemCard
-                  key={item._id}
-                  item={item}
+                  <MenuItemCard
+                    key={item._id}
+                    item={item}
                     isSelected={selectedItems.some(selectedItem => selectedItem._id === item._id)}
                     onSelect={handleItemSelect}
-                  onAddToCart={handleAddToCart}
+                    onAddToCart={handleAddToCart}
                     spicyPreferences={spicyPreferences[item._id] || []}
                     onSpicyChange={handleSpicyChange}
-                    addOns={addOnsData || []}
+                    addOns={addOnsData}
                     onAddOnToggle={handleAddOnToggle}
-                  onAddOnToggleChange={handleAddOnToggleChange}
+                    onAddOnToggleChange={handleAddOnToggleChange}
                     specialInstructions={specialInstructions[item._id] || ''}
                     onInstructionsChange={handleInstructionsChange}
                   />

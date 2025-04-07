@@ -1,3 +1,4 @@
+
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -43,11 +44,26 @@ export const userApi = createApi({
         }
       },
     }),
+    getUserOrders: builder.query({
+      query: (userId) => `/users/${userId}/orders`,
+      transformResponse: (response) => {
+        if (response.orders) {
+          return response.orders;
+        } else if (response.data && response.data.orders) {
+          return response.data.orders;
+        } else if (Array.isArray(response)) {
+          return response;
+        }
+        return [];
+      },
+    }),
   }),
 });
 
 export const { 
   useGetUserByPhoneQuery,
   useLazyGetUserByPhoneQuery,
-  useCreateUserMutation
+  useCreateUserMutation,
+  useGetUserOrdersQuery,
+  useLazyGetUserOrdersQuery
 } = userApi; 

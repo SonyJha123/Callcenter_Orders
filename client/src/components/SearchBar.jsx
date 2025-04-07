@@ -1,15 +1,20 @@
+
 import React, { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2 } from "lucide-react";
 import { useLazyGetUserByPhoneQuery } from '../redux/services/userApi';
+import { useLazySearchItemsQuery } from '../redux/services/restaurantApi';
 
 const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone number", buttonText = "Search", validateInput, searchType = "customer", value, onChange }) => {
   const [searchInput, setSearchInput] = useState('');
   const { toast } = useToast();
   
-  // RTK Query hook for customer search
-  const [getUserByPhone, { isLoading }] = useLazyGetUserByPhoneQuery();
+  // RTK Query hooks
+  const [getUserByPhone, { isLoading: isLoadingUser }] = useLazyGetUserByPhoneQuery();
+  const [searchMenuItems, { isLoading: isSearchingMenu }] = useLazySearchItemsQuery();
+  
+  const isLoading = isLoadingUser || isSearchingMenu;
 
   // Synchronize with external value if provided
   useEffect(() => {
@@ -31,10 +36,33 @@ const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone numbe
     if (searchType === "menu" && !onChange && newValue.length > 2) {
       // Debounce search for better performance
       const handler = setTimeout(() => {
-        onCustomerSearch(newValue);
+        performMenuSearch(newValue);
       }, 300);
       
       return () => clearTimeout(handler);
+    }
+  };
+
+  const performMenuSearch = async (term) => {
+    if (term.length < 2) return;
+    
+    try {
+      const results = await searchMenuItems(term).unwrap();
+      if (results && results.data && Array.isArray(results.data)) {
+        onCustomerSearch(results.data);
+      } else if (Array.isArray(results)) {
+        onCustomerSearch(results);
+      } else {
+        onCustomerSearch([]);
+      }
+    } catch (error) {
+      console.error("Error performing menu search:", error);
+      toast({
+        title: "Search Error",
+        description: "Unable to search menu items at this time",
+        variant: "destructive",
+      });
+      onCustomerSearch([]);
     }
   };
 
@@ -121,8 +149,8 @@ const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone numbe
         });
       }
     } else {
-      // For menu searches, just pass the input value
-      onCustomerSearch(searchInput);
+      // For menu searches, call the search function
+      await performMenuSearch(searchInput);
     }
   };
 

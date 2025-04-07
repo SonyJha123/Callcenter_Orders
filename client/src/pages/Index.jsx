@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SearchBar from '../components/SearchBar';
 import CustomerForm from '../components/CustomerForm';
 import RestaurantsList from '../components/RestaurantsList';
@@ -24,7 +24,6 @@ const Index = () => {
   };
 
   const handleCustomerDataChange = (data) => {
-    // Maintain the customer's previous orders if they exist
     const previousOrders = customerData?.previousOrders || [];
     
     setCustomerData(prevData => ({
@@ -34,72 +33,64 @@ const Index = () => {
     }));
   };
 
-  const handleAddToCart = (item) => {
+  const generateCartItemId = (item) => {
+    const timestamp = Date.now();
+    const originalId = item._id || 
+      (item.item_id && (typeof item.item_id === 'object' ? item.item_id._id : item.item_id));
+    return `${originalId}_${timestamp}`;
+  };
+
+  const processItemForCart = (item, isReorder = false) => {
     
-    // Create a unique cart ID to distinguish between items
-    // Use timestamp to ensure uniqueness even for same items added at different times
-    const cartItemId = `${item._id || (item.item_id && (typeof item.item_id === 'object' ? item.item_id._id : item.item_id))}_${Date.now()}`;
+    const originalItemId = item._id || 
+      (item.item_id && (typeof item.item_id === 'object' ? item.item_id._id : item.item_id));
     
-    // Ensure we have all the required properties for the cart item
+    const cartItemId = generateCartItemId(item);
+    
     const processedItem = {
       ...item,
-      _id: item._id || (item.item_id && (typeof item.item_id === 'object' ? item.item_id._id : item.item_id)),
-      cartItemId, // Add unique cart item ID for tracking in cart
-      originalItemId: item._id || (item.item_id && (typeof item.item_id === 'object' ? item.item_id._id : item.item_id)), // Keep original item ID for API calls
+      _id: originalItemId,
+      cartItemId: cartItemId,
+      originalItemId: originalItemId,
       itemName: item.itemName || (item.item_id && item.item_id.itemName) || item.name,
-      price: item.price || (item.item_id && item.item_id.price) || item.basePrice,
-      basePrice: item.basePrice || item.price || (item.item_id && item.item_id.price),
-      addOns: item.addOns || [],
+      price: Number(item.price || (item.item_id && item.item_id.price) || item.basePrice || 0),
+      basePrice: Number(item.basePrice || item.price || (item.item_id && item.item_id.price) || 0),
       quantity: item.quantity || 1,
-      image: item.image || (item.item_id && item.item_id.image)
+      image: item.image || (item.item_id && item.item_id.image) || '',
+      spicyPreferences: item.spicyPreferences || [],
+      specialInstructions: item.specialInstructions || '',
+      addOns: Array.isArray(item.addOns) ? item.addOns.map(addOn => ({
+        ...addOn,
+        _id: addOn._id || addOn.id,
+        price: Number(addOn.price || 0),
+        quantity: addOn.quantity || 1,
+        name: addOn.name || addOn.itemName,
+        itemName: addOn.itemName || addOn.name
+      })) : []
     };
     
-    // Ensure add-ons have a quantity field
-    if (processedItem.addOns && processedItem.addOns.length > 0) {
-      processedItem.addOns = processedItem.addOns.map(addOn => ({
-        ...addOn,
-        quantity: addOn.quantity || 1
-      }));
-    }
+    return processedItem;
+  };
+
+  const handleAddToCart = (item) => {
+    
+    const processedItem = processItemForCart(item);
     
     setCartItems(prevItems => {
-      // Create a unique identifier for the item based on its properties and the cartItemId
-      const getItemIdentifier = (item) => {
-        const addOnsIds = item.addOns?.map(addon => addon._id).sort().join('-') || 'no-addons';
-        const spicyPref = item.spicyPreferences?.join('-') || 'no-pref';
-        const instructions = item.specialInstructions || 'no-instructions';
-        // Include cartItemId in the identifier if it exists
-        return item.cartItemId || `${item._id}-${addOnsIds}-${spicyPref}-${instructions}`;
-      };
+      return [...prevItems, processedItem];
+    });
     
-      // Check if the item already exists with the same configuration
-      const itemIdentifier = getItemIdentifier(processedItem);
-      const existingItemIndex = prevItems.findIndex(existing => getItemIdentifier(existing) === itemIdentifier);
-
-      if (existingItemIndex !== -1) {
-        // If item exists with same configuration, increment quantity
-        return prevItems.map((existing, index) => 
-          index === existingItemIndex 
-            ? { ...existing, quantity: existing.quantity + (processedItem.quantity || 1) }
-            : existing
-        );
-      } else {
-        // If item is new or has different configuration, add it
-        return [...prevItems, processedItem];
-      }
+    toast({
+      title: "Item Added",
+      description: `${processedItem.itemName} added to cart.`,
     });
   };
 
   const handleRemoveItem = (itemId) => {
     if (itemId === -1) {
-      // Clear entire cart
       setCartItems([]);
     } else {
-      // Remove by cartItemId if it exists, otherwise by _id
-      setCartItems(prevItems => prevItems.filter(item => 
-        (item.cartItemId && item.cartItemId !== itemId) || 
-        (!item.cartItemId && item._id !== itemId)
-      ));
+      setCartItems(prevItems => prevItems.filter(item => item.cartItemId !== itemId));
     }
   };
 
@@ -107,36 +98,45 @@ const Index = () => {
     
     setCartItems(prevItems => 
       prevItems.map(item => {
-        // Check if we should update by cartItemId or _id
-        const shouldUpdate = (item.cartItemId && item.cartItemId === itemId) || 
-                             (!item.cartItemId && item._id === itemId);
-        
-        if (shouldUpdate) {
-          // If updatedItem is provided, use it to update the item (for add-on changes)
+        if (item.cartItemId === itemId) {
           if (updatedItem) {
             return { ...item, ...updatedItem, quantity: newQuantity };
           }
-          // Otherwise just update the quantity
           return { ...item, quantity: newQuantity };
         }
-        
         return item;
-      }).filter(item => item.quantity > 0) // Remove items with quantity 0
+      }).filter(item => item.quantity > 0)
+    );
+  };
+
+  const handleUpdateAddonQuantity = (itemId, addonId, newQuantity) => {
+    
+    setCartItems(prevItems => 
+      prevItems.map(item => {
+        if (item.cartItemId === itemId) {
+          const updatedAddOns = item.addOns.map(addon => {
+            if (addon._id === addonId) {
+              return { ...addon, quantity: newQuantity };
+            }
+            return addon;
+          });
+          
+          const filteredAddOns = updatedAddOns.filter(addon => addon.quantity > 0);
+          
+          return { ...item, addOns: filteredAddOns };
+        }
+        return item;
+      })
     );
   };
 
   const handleOrderSuccess = () => {
-    // Show success toast
     toast({
       title: "Order Completed",
       description: "The order has been successfully placed.",
     });
     
-    // Clear cart
     setCartItems([]);
-    
-    // Don't reset the customer data as that would reload the form
-    // This way the customer data remains, but cart is cleared
   };
 
   return (
@@ -191,13 +191,14 @@ const Index = () => {
             </div>
           </div>
           
-          <div className={`${isMobile ? '' : 'col-span-4 sticky'}} style={{ top: '5rem' }`}>
+          <div className={`${isMobile ? '' : 'col-span-4 sticky'}`} style={{ top: '5rem' }}>
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <Cart 
                 cartItems={cartItems}
                 customer={customerData || {}}
                 onRemoveItem={handleRemoveItem}
                 onUpdateQuantity={handleUpdateQuantity}
+                onUpdateAddonQuantity={handleUpdateAddonQuantity}
                 customerData={customerData}
                 onOrderSuccess={handleOrderSuccess}
               />
@@ -209,4 +210,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default Index;
