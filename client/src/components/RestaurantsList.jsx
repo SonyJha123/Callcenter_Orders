@@ -43,7 +43,7 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
       className={`${isSelected ? 'sm:col-span-2 md:col-span-2 lg:col-span-2' : ''
         } relative group`}
     >
-      {/* <div
+      <div
         className={`flex flex-col rounded-lg transition-all duration-200 overflow-hidden shadow-[0px_0px_8px_#d9d9d9] ${isSelected
           ? 'bg-white border-2 border-app-primary shadow-lg'
           : 'bg-white hover:bg-gray-50 border hover:shadow-md'
@@ -59,23 +59,36 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
               alt={itemName}
               className="object-cover w-[200px] lg:max-h-[80px] xl:max-h-[105px]"
             />
-            <div className="absolute -top-2 -right-2">
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={() => onSelect(item)}
-                className="h-5 w-5 rounded-md border-2 border-app-primary text-app-primary focus:ring-app-primary cursor-pointer"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
           </div>
-          <div className="px-4 pt-4 pb-4 flex flex-col">
+          <div className="px-4 pt-4 flex flex-col">
             <span className="text-[16px] font-medium items-center overflow-hidden text-ellipsis [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical]">{itemName}</span>
             <span className="font-bold mt-2 text-app-primary text-[18px] border-b pb-2">${itemPrice.toFixed(2)}</span>
-            <span className="rounded-[5px] text-center text-sm font-medium bg-app-primary text-primary-foreground hover:bg-app-primary/90 px-4 py-2 rounded-md px-3">Customise deal</span>
           </div>
-        </div> */}
-      <div
+            <div className="flex flex-wrap gap-3 items-center pb-4 px-4 pt-2">
+            {/* Plus Button - Open customization modal */}
+          
+            <button
+              className="relative bg-green-500 p-2 rounded-full text-[12px] hover:bg-green-700 transition"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(item);
+              }}
+            >
+              <FaPlus className="text-white" />
+            </button>
+            <button
+              className="relative bg-app-primary p-2 rounded-full text-[12px] hover:bg-[#f41d23] transition"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCart(item);
+              }}
+            >
+              <FaShoppingCart className="text-white" />
+            </button>
+            </div>
+          
+        </div>
+      {/* <div
         className={`flex flex-col rounded-lg transition-all duration-200 ${isSelected
             ? 'bg-white border-2 border-app-primary shadow-lg'
             : 'bg-white hover:bg-gray-50 border hover:shadow-md h-[155px]'
@@ -108,7 +121,7 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
             </button>
           </div>
 
-          {/* Plus Button - Open customization modal */}
+          
           <div className="absolute bottom-[14px] right-[50px]">
             <button
               className="relative bg-green-500 p-2 rounded-full text-[12px] hover:bg-green-700 transition"
@@ -120,7 +133,7 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
               <FaPlus className="text-white" />
             </button>
           </div>
-        </div>
+        </div> */}
 
         {isSelected && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
