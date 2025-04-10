@@ -140,17 +140,17 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white py-3 px-4 shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <div className="min-h-screen">
+      <header className="bg-[linear-gradient(#ffe3e4a1,_#FFFFFF)] py-3 px-4 shadow-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="container mx-auto max-w-7xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="bg-app-primary p-2 rounded-lg">
-                <h1 className="text-xl font-bold text-white">SpeedOrder</h1>
+                <h1 className="text-xl font-bold text-white">Logo</h1>
               </div>
-              <p className="text-sm text-gray-600 hidden sm:block">Fast Order-Taking System</p>
+              <p className="text-[18px] text-[#000] font-semibold hidden sm:block">Fast Order-Taking System</p>
             </div>
-            <div className="text-sm text-gray-500 bg-gray-50 px-3 py-1 rounded-md">
+            <div className="text-sm text-[#000] px-3 py-1 rounded-md">
               {new Date().toLocaleString()}
             </div>
           </div>
@@ -166,7 +166,7 @@ const Index = () => {
               </div>
               
               {customerData && (
-                <div className="mt-4 max-w-2xl mx-auto bg-gray-50 p-4 rounded-lg">
+                <div className="mt-4 max-w-2xl mx-auto p-4 rounded-lg">
                   <CustomerForm 
                     customerData={customerData} 
                     onCustomerInfoUpdate={handleCustomerInfoUpdate}
@@ -179,8 +179,8 @@ const Index = () => {
 
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="p-4 border-b border-gray-100">
-                <h2 className="text-lg font-semibold text-app-secondary flex items-center">
-                  <span className="mr-2">🍽</span> Menu Selection
+                <h2 className="text-lg font-semibold flex items-center">
+                <span className="mr-2 text-[22px]">🍽️</span> <span className="text-[#000] text-[22px] font-semibold">Menu Selection</span>
                 </h2>
               </div>
               <div className="p-4">
@@ -192,7 +192,7 @@ const Index = () => {
           </div>
           
           <div className={`${isMobile ? '' : 'col-span-4 sticky'}`} style={{ top: '5rem' }}>
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm md:sticky md:overflow-auto md:h-[90vh] md:top-[80px] scrollbar-hide">
               <Cart 
                 cartItems={cartItems}
                 customer={customerData || {}}

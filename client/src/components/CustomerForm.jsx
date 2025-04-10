@@ -461,38 +461,38 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     if (!customerData || !isExistingCustomer) return null;
 
     return (
-      <div className="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
+      <div className="bg-[linear-gradient(#ffe3e4a1,_#FFFFFF)] shadow-[0px_0px_8px_#d9d9d9] p-5 rounded-lg mb-4 text-sm">
         <h3 className="font-medium text-gray-700 mb-2 flex items-center">
-          <UserCheck size={16} className="text-app-primary mr-2" />
-          Customer Information
+          <UserCheck size={18} className="text-app-primary font-semibold mr-2" />
+          <span className="text-[16px] font-medium text-[#000]">Customer Information</span>
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
-            <p className="text-gray-500">Customer ID</p>
-            <p className="font-medium">{customerData._id || 'N/A'}</p>
+            <p className="text-[14px] font-medium text-[#000]">Customer ID</p>
+            <p className="font-medium text-gray-500">{customerData._id || 'N/A'}</p>
           </div>
           {customerData.city && (
             <div>
-              <p className="text-gray-500">City</p>
-              <p className="font-medium">{customerData.city}</p>
+              <p className="text-[14px] font-medium text-[#000]">City</p>
+              <p className="font-medium text-gray-500">{customerData.city}</p>
             </div>
           )}
           {customerData.state && (
             <div>
-              <p className="text-gray-500">State</p>
-              <p className="font-medium">{customerData.state}</p>
+              <p className="text-[14px] font-medium text-[#000]">State</p>
+              <p className="font-medium text-gray-500">{customerData.state}</p>
             </div>
           )}
           {customerData.country && (
             <div>
-              <p className="text-gray-500">Country</p>
-              <p className="font-medium">{customerData.country}</p>
+              <p className="text-[14px] font-medium text-[#000]">Country</p>
+              <p className="font-medium text-gray-500">{customerData.country}</p>
             </div>
           )}
           {customerData.previousOrders && customerData.previousOrders.length > 0 && (
             <div>
-              <p className="text-gray-500">Order History</p>
-              <p className="font-medium">{customerData.previousOrders.length} previous orders</p>
+              <p className="text-[14px] font-medium text-[#000]">Order History</p>
+              <p className="font-medium text-gray-500">{customerData.previousOrders.length} previous orders</p>
             </div>
           )}
         </div>
@@ -515,15 +515,15 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                     <img
                       src={item.image || item.item_id.image || 'https://via.placeholder.com/40'}
                       alt={item.name || item.item_id.itemName || item.itemName || 'Item'}
-                      className="w-10 h-10 rounded-full object-cover"
+                      className="w-10 h-10 rounded-[10px] object-cover"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
+                      <div className="flex flex-col justify-between items-start">
                         <p className="font-medium text-sm">{item.name || item.item_id.itemName || item.itemName || 'Unknown Item'}</p>
-                        <p className="text-sm font-medium text-app-primary">₹{(item.price || 0).toFixed(2)}</p>
+                        <p className="text-sm font-semibold text-app-primary">${(item.price || 0).toFixed(2)}</p>
                       </div>
                       {item.quantity > 1 && (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 text-[#000]">
                           Quantity: {item.quantity}
                         </p>
                       )}
@@ -538,9 +538,9 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
     };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+    <div className="bg-white p-5 rounded-lg shadow-[0px_0px_8px_#d9d9d9] mb-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Customer Information</h2>
+        <h2 className="text-[18px] text-[#000] font-semibold">Customer Information</h2>
         {isExistingCustomer && (
           <div className="bg-green-100 text-green-800 text-xs py-1 px-2 rounded-full">
             Existing Customer
@@ -572,12 +572,12 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
         {({ errors, touched, values, handleChange, setFieldValue }) => (
           <Form className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Name *</label>
+              <label className="block text-sm font-semibold mb-1">Name *</label>
               <Field
                 type="text"
                 name="name"
                 placeholder="Customer name"
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-[20px] focus:outline-none focus:ring-1 focus:ring-app-primary shadow-sm"
                 onChange={(e) => {
                   handleChange(e);
                   onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
@@ -590,13 +590,13 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Phone *</label>
+              <label className="block text-sm font-semibold mb-1">Phone *</label>
               <div className="flex relative">
                 <Field
                   type="tel"
                   name="phone"
                   placeholder="Phone number"
-                  className="w-full px-3 py-2 border rounded-l-md"
+                  className="w-full px-3 py-2 border rounded-l-[20px] focus:outline-none focus:ring-1 focus:ring-app-primary shadow-sm"
                   onChange={(e) => {
                     handleChange(e);
                     onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
@@ -610,7 +610,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                 />
                 <button
                   type="button"
-                  className="bg-app-primary text-white px-3 py-2 rounded-r-md hover:bg-app-primary/90 transition-colors flex items-center"
+                  className="bg-app-primary text-white px-3 py-2 rounded-r-[20px] hover:bg-app-primary/90 transition-colors flex items-center"
                   onClick={() => handleCheckCustomer(values.phone, setFieldValue)}
                   disabled={isLoading}
                 >
@@ -629,7 +629,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
 
             <div className="md:col-span-2 relative">
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium">Address *</label>
+                <label className="block text-sm font-semibold">Address *</label>
                 {!isExistingCustomer && (
                   <button
                     type="button"
@@ -649,7 +649,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                   type="text"
                   name="address"
                   placeholder={isExistingCustomer ? "Address from customer profile" : "Start typing city name..."}
-                  className={`w-full pl-10 px-3 py-2 border rounded-md ${isExistingCustomer ? 'bg-gray-50' : ''}`}
+                  className={`w-full pl-10 px-3 py-2 border rounded-[20px] focus:outline-none focus:ring-1 focus:ring-app-primary shadow-sm ${isExistingCustomer ? 'bg-gray-50' : ''}`}
                   value={searchTerm}
                   onChange={(e) => {
                     if (!isExistingCustomer) {
@@ -705,12 +705,12 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
+              <label className="block text-sm font-semibold mb-1">Email</label>
               <Field
                 type="email"
                 name="email"
                 placeholder="Email address (Optional)"
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-[20px] focus:outline-none focus:ring-1 focus:ring-app-primary shadow-sm"
                 onChange={(e) => {
                   handleChange(e);
                   onCustomerInfoUpdate?.({ ...values, [e.target.name]: e.target.value });
@@ -740,10 +740,10 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
           <button
             type="button"
             onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
-            className="flex items-center justify-between w-full bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+            className="flex items-center justify-between w-full bg-[#dcfce7] p-3 rounded-lg border border-[#dcfce7] hover:bg-gray-100 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <Clock size={16} className="text-gray-600" />
+              <Clock size={16} className="text-app-primary" />
               <h3 className="text-sm font-semibold">Order History</h3>
               <span className="bg-app-primary text-white text-xs px-2 py-0.5 rounded-full">
                 {customerData.previousOrders.length}
@@ -779,7 +779,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                                 )}
                               </div>
                               <div className="flex items-center gap-3">
-                                <span className="text-sm font-semibold text-app-primary">₹{order.subtotal.toFixed(2)}</span>
+                                <span className="text-sm font-semibold text-app-primary">${order.subtotal.toFixed(2)}</span>
                                 {expandedOrderId === (order.id || index) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                               </div>
                             </button>
@@ -787,18 +787,18 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                             {expandedOrderId === (order.id || index) && (
                               <div className="px-3 pb-3">
                                 <div className="bg-white p-2 rounded border text-xs mb-2">
-                                  <p className="font-medium mb-1">Items:</p>
+                                  <p className="font-medium mb-1 text-[#000]">Items:</p>
                                   {renderOrderItems(order)}
           
                                   <div className="mt-3 pt-2 border-t border-gray-100">
                                     <div className="grid grid-cols-2 gap-2">
                                       <div>
-                                        <p className="text-gray-500">Payment Method</p>
-                                        <p className="font-medium">{order.paymentMethod || 'Cash'}</p>
+                                        <p className="text-[#000]">Payment Method</p>
+                                        <p className="font-medium text-gray-500">{order.paymentMethod || 'Cash'}</p>
                                       </div>
                                       <div>
-                                        <p className="text-gray-500">Delivery Mode</p>
-                                        <p className="font-medium">{order.deliveryMode === 'HOME_DELIVERY' ? 'Home Delivery' : 'Takeaway'}</p>
+                                        <p className="text-[#000]">Delivery Mode</p>
+                                        <p className="font-medium text-gray-500">{order.deliveryMode === 'HOME_DELIVERY' ? 'Home Delivery' : 'Takeaway'}</p>
                                       </div>
                                     </div>
                                   </div>

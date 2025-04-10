@@ -164,7 +164,7 @@ const SearchBar = ({ onCustomerSearch, placeholder = "Enter customer phone numbe
           <input
             type={searchType === "customer" ? "tel" : "text"}
             placeholder={placeholder}
-            className="flex-grow w-full pl-10 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-app-primary shadow-sm"
+            className="flex-grow w-full pl-10 px-4 py-2 border rounded-[20px] focus:outline-none focus:ring-1 focus:ring-app-primary shadow-sm"
             value={searchInput}
             onChange={handleInputChange}
           />

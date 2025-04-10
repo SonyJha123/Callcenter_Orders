@@ -275,8 +275,8 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
     return (
       <div className="mt-3 space-y-2 bg-gray-50 p-2 rounded-md">
         <div className="flex items-center gap-1 mb-2">
-          <Tag className="h-3.5 w-3.5 text-gray-700" />
-          <p className="text-xs font-medium text-gray-700">Add-ons</p>
+          <Tag className="h-[15px] w-[15px] text-app-primary" />
+          <p className="text-xs font-medium text-[#000]">Add-ons</p>
         </div>
         {item.addOns.map((addOn, index) => (
           <div 
@@ -286,7 +286,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{addOn.name || addOn.itemName}</p>
-                <p className="text-xs text-gray-500">₹{parseFloat(addOn.price || 0).toFixed(2)}</p>
+                <p className="text-xs text-gray-500">${parseFloat(addOn.price || 0).toFixed(2)}</p>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -307,13 +307,13 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
               </div>
             </div>
             <div className="flex justify-end text-xs text-gray-700 mt-1">
-              <span>Total: ₹{((parseFloat(addOn.price || 0) * (addOn.quantity || 1))).toFixed(2)}</span>
+              <span>Total: ${((parseFloat(addOn.price || 0) * (addOn.quantity || 1))).toFixed(2)}</span>
             </div>
           </div>
         ))}
         <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t border-gray-300">
           <span>Add-ons Total</span>
-          <span>₹{(item.addOns.reduce((sum, addOn) => sum + parseFloat(addOn.price || 0) * (addOn.quantity || 1), 0)).toFixed(2)}</span>
+          <span>${(item.addOns.reduce((sum, addOn) => sum + parseFloat(addOn.price || 0) * (addOn.quantity || 1), 0)).toFixed(2)}</span>
         </div>
       </div>
     );
@@ -363,14 +363,14 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
 
   return (
     <div className="bg-white rounded-lg shadow-sm h-full flex flex-col">
-      <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold text-gray-800">Your Order</h2>
+      <div className="p-4 border-[#ffe3e4a1] bg-[#ffe3e4a1]">
+        <h2 className="text-[18px] font-semibold text-[#000]">Your Order</h2>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 space-y-6">
+      <div className="flex-1 overflow-auto scrollbar-hide p-4 space-y-6">
         {cartItems.length > 0 ? (
           <div className="space-y-3">
-            <h3 className="font-medium text-gray-700">Selected Items</h3>
+            <h3 className="font-semibold text-[#000]">Selected Items</h3>
             {cartItems.map((item) => (
               <Card key={item.cartItemId} className="p-3">
                 <div className="flex items-center justify-between gap-2">
@@ -378,12 +378,12 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
                     <img
                       src={item.image  || item.item_id.image ||'https://via.placeholder.com/40'}
                       alt={item.itemName ||  item.item_id.itemName || item.name}
-                      className="w-10 h-10 rounded-full object-cover"
+                      className="w-10 h-10 rounded-[10px] object-cover"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
+                      <div className="flex flex-col justify-between items-start">
                         <p className="font-medium text-sm">{item.itemName || item.name ||item.item_id.itemName}</p>
-                        <p className="text-sm font-medium text-app-primary">₹{(item.basePrice || item.price || 0).toFixed(2)}</p>
+                        <p className="text-sm font-semibold text-app-primary">${(item.basePrice || item.price || 0).toFixed(2)}</p>
                       </div>
                       
                       {renderSpicyPreferences(item.spicyPreferences)}
@@ -426,12 +426,12 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
                 
                 <div className="mt-2 pt-2 border-t space-y-1">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Base Price (₹{(item.basePrice || item.price || 0).toFixed(2)} × {item.quantity})</span>
-                    <span>₹{((item.basePrice || item.price || 0) * item.quantity).toFixed(2)}</span>
+                    <span className="text-[#000]">Base Price (${(item.basePrice || item.price || 0).toFixed(2)} × {item.quantity})</span>
+                    <span>${((item.basePrice || item.price || 0) * item.quantity).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm font-medium pt-1 border-t">
-                    <span className="text-gray-700">Item Total</span>
-                    <span className="text-app-primary">₹{calculateItemTotal(item).toFixed(2)}</span>
+                    <span className="text-[#000] font-semibold">Item Total</span>
+                    <span className="text-app-primary font-semibold">${calculateItemTotal(item).toFixed(2)}</span>
                   </div>
                 </div>
               </Card>
@@ -445,10 +445,10 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
         )}
 
         <div className="space-y-3">
-          <h3 className="font-medium text-gray-700">Customer Information</h3>
+          <h3 className="text-[16px] text-[#000] font-semibold mb-4">Customer Information</h3>
           <div className="grid gap-3">
             <div>
-              <Label htmlFor="customer_name" className="text-sm font-medium text-gray-700 mb-1 block">Full Name</Label>
+              <Label htmlFor="customer_name" className="text-sm font-semibold mb-2 block">Full Name</Label>
               <Input
                 id="customer_name"
                 name="customer_name"
@@ -460,13 +460,13 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
                     setErrors(prev => ({ ...prev, customer_name: '' }));
                   }
                 }}
-                className={errors.customer_name ? 'border-red-500 focus:ring-red-500' : ''}
+                className={errors.customer_name ? 'border-red-500 focus:ring-red-500' : 'rounded-[20px]'}
               />
               {errors.customer_name && <p className="text-red-500 text-xs mt-1">{errors.customer_name}</p>}
             </div>
             
             <div>
-              <Label htmlFor="customer_phone" className="text-sm font-medium text-gray-700 mb-1 block">Phone Number</Label>
+              <Label htmlFor="customer_phone" className="text-sm font-semibold mb-2 block">Phone Number</Label>
               <Input
                 id="customer_phone"
                 name="customer_phone"
@@ -479,13 +479,13 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
                     setErrors(prev => ({ ...prev, customer_phone: '' }));
                   }
                 }}
-                className={errors.customer_phone ? 'border-red-500 focus:ring-red-500' : ''}
+                className={errors.customer_phone ? 'border-red-500 focus:ring-red-500' : 'rounded-[20px]'}
               />
               {errors.customer_phone && <p className="text-red-500 text-xs mt-1">{errors.customer_phone}</p>}
             </div>
             
             <div>
-              <Label htmlFor="customer_email" className="text-sm font-medium text-gray-700 mb-1 block">Email Address (Optional)</Label>
+              <Label htmlFor="customer_email" className="text-sm font-semibold mb-2 block">Email Address (Optional)</Label>
               <Input
                 id="customer_email"
                 name="customer_email"
@@ -493,13 +493,14 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
                 placeholder="Email Address"
                 value={agentFields.customer_email}
                 onChange={(e) => setAgentFields({ ...agentFields, customer_email: e.target.value })}
+                className="rounded-[20px]"
               />
             </div>
           </div>
         </div>
 
         <div className="space-y-3">
-          <h3 className="font-medium text-gray-700">Delivery Options</h3>
+          <h3 className="font-semibold mb-4">Delivery Options</h3>
           <RadioGroup
             name="delivery_mode"
             value={deliveryMode}
@@ -515,17 +516,17 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="TAKEAWAY" id="takeaway" />
-              <Label htmlFor="takeaway">Takeaway</Label>
+              <Label htmlFor="takeaway" className='cursor-pointer'>Takeaway</Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="HOME_DELIVERY" id="delivery" />
-              <Label htmlFor="delivery">Home Delivery</Label>
+              <Label htmlFor="delivery" className='cursor-pointer'>Home Delivery</Label>
             </div>
           </RadioGroup>
 
           {deliveryMode === 'TAKEAWAY' && (
             <div className="mt-3">
-              <Label htmlFor="pickup_address" className="text-sm font-medium text-gray-700 mb-1 block">Pickup Address</Label>
+              <Label htmlFor="pickup_address" className="text-sm font-semibold mb-4 block">Pickup Address</Label>
               <Textarea
                 id="pickup_address"
                 name="pickup_address"
@@ -537,7 +538,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
                     setErrors(prev => ({ ...prev, pickup_address: '' }));
                   }
                 }}
-                className={`h-20 ${errors.pickup_address ? 'border-red-500 focus:ring-red-500' : ''}`}
+                className={`h-20 ${errors.pickup_address ? 'border-red-500 focus:ring-red-500' : 'rounded-[20px]'}`}
               />
               {errors.pickup_address && <p className="text-red-500 text-xs mt-1">{errors.pickup_address}</p>}
             </div>
@@ -545,7 +546,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
 
           {deliveryMode === 'HOME_DELIVERY' && (
             <div className="mt-3">
-              <Label htmlFor="delivery_address" className="text-sm font-medium text-gray-700 mb-1 block">Delivery Address</Label>
+              <Label htmlFor="delivery_address" className="text-sm font-semibold mb-4 block">Delivery Address</Label>
               <Textarea
                 id="delivery_address"
                 name="delivery_address"
@@ -557,7 +558,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
                     setErrors(prev => ({ ...prev, delivery_address: '' }));
                   }
                 }}
-                className={`h-20 ${errors.delivery_address ? 'border-red-500 focus:ring-red-500' : ''}`}
+                className={`h-20 ${errors.delivery_address ? 'border-red-500 focus:ring-red-500' : 'rounded-[20px]'}`}
               />
               {errors.delivery_address && <p className="text-red-500 text-xs mt-1">{errors.delivery_address}</p>}
             </div>
@@ -565,7 +566,7 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
         </div>
 
         <div className="space-y-3">
-          <h3 className="font-medium text-gray-700">Payment Method</h3>
+          <h3 className="font-semibold mb-4">Payment Method</h3>
           <RadioGroup
             name="payment_method"
             value={paymentMethod}
@@ -574,79 +575,79 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="CASH" id="cash" />
-              <Label htmlFor="cash">Cash</Label>
+              <Label htmlFor="cash" className='cursor-pointer'>Cash</Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="CARD" id="card" />
-              <Label htmlFor="card">Card</Label>
+              <Label htmlFor="card" className='cursor-pointer'>Card</Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="UPI" id="upi" />
-              <Label htmlFor="upi">UPI</Label>
+              <Label htmlFor="upi" className='cursor-pointer'>UPI</Label>
             </div>
           </RadioGroup>
         </div>
 
         <div className="space-y-3">
-          <h3 className="font-medium text-gray-700">Special Instructions</h3>
+          <h3 className="font-semibold mb-4">Special Instructions</h3>
           <Textarea
             name="description"
             placeholder="Any special instructions or notes..."
             value={additionalNotes}
             onChange={(e) => setAdditionalNotes(e.target.value)}
-            className="h-20"
+            className="h-20 rounded-[20px]"
           />
         </div>
 
         <div className="space-y-3">
-          <h3 className="font-medium text-gray-700">Order Summary</h3>
+          <h3 className="font-semibold mb-4">Order Summary</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>Items Subtotal</span>
-              <span>₹{subtotal.toFixed(2)}</span>
+              <span>${subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span>Tax (5%)</span>
-              <span>₹{tax.toFixed(2)}</span>
+              <span>${tax.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span>Delivery Fee</span>
-              <span>₹{deliveryFee.toFixed(2)}</span>
+              <span>${deliveryFee.toFixed(2)}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-green-600">
                 <span>Discount</span>
-                <span>-₹{discount.toFixed(2)}</span>
+                <span>-${discount.toFixed(2)}</span>
               </div>
             )}
             
             {(promoDiscount > 0 || additionalCharge > 0 || remainingBalance > 0) && (
               <div className="p-3 bg-gray-50 rounded-md mt-2">
-                <p className="text-sm font-medium text-gray-700 mb-2">Price Adjustments:</p>
+                <p className="text-sm font-medium text-gray-700 mb-4">Price Adjustments:</p>
                 <div className="space-y-2 text-sm">
                   {promoDiscount > 0 && (
                     <div className="flex justify-between">
                       <span>Promo Discount</span>
-                      <span className="text-green-600">-₹{promoDiscount.toFixed(2)}</span>
+                      <span className="text-green-600">-${promoDiscount.toFixed(2)}</span>
                     </div>
                   )}
                   {additionalCharge > 0 && (
                     <div className="flex justify-between">
                       <span>Additional Charge</span>
-                      <span>+₹{additionalCharge.toFixed(2)}</span>
+                      <span>+${additionalCharge.toFixed(2)}</span>
                     </div>
                   )}
                   {remainingBalance > 0 && (
                     <div className="flex justify-between">
                       <span>Remaining Balance</span>
-                      <span className="text-green-600">-₹{remainingBalance.toFixed(2)}</span>
+                      <span className="text-green-600">-${remainingBalance.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-medium pt-2 border-t">
                     <span>Net Adjustment</span>
                     <span className={((promoDiscount + remainingBalance) > additionalCharge) ? "text-green-600" : ""}>
                       {((promoDiscount + remainingBalance) > additionalCharge) ? "-" : "+"}
-                      ₹{Math.abs(additionalCharge - promoDiscount - remainingBalance).toFixed(2)}
+                      ${Math.abs(additionalCharge - promoDiscount - remainingBalance).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -654,8 +655,8 @@ const Cart = ({ cartItems, onRemoveItem, onUpdateQuantity, onUpdateAddonQuantity
             )}
             
             <div className="flex justify-between font-medium text-base pt-2 border-t">
-              <span>Total</span>
-              <span>₹{total.toFixed(2)}</span>
+              <span className='font-semibold'>Total</span>
+              <span className='text-app-primary font-semibold'>${total.toFixed(2)}</span>
             </div>
           </div>
         </div>
