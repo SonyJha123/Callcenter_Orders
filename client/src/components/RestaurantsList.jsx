@@ -49,13 +49,13 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
       >
         <div
           onClick={() => onSelect(item)}
-          className={`relative flex flex-col items-start cursor-pointer ${isSelected ? 'pb-2' : 'h-full'}`}
+          className={`relative cursor-pointer ${isSelected ? 'pb-2' : 'h-full'}`}
         >
-          <div className="relative mb-3">
+          <div className="relative">
             <img
               src={itemImage}
               alt={itemName}
-              className="w-full h-full object-cover"
+              className="object-cover w-[200px] lg:max-h-[80px] xl:max-h-[105px]"
             />
             {/* <div className="absolute -top-2 -right-2">
               <input
@@ -67,10 +67,10 @@ const MenuItemCard = ({ item, isSelected, onSelect, onAddToCart, spicyPreference
               />
             </div> */}
           </div>
-          <div className="px-4 pt-4 flex flex-col">
-            <span className="text-[16px] font-medium max-h-[20px] items-center">{itemName}</span><br />
-            <span className="font-bold mt-2 text-app-primary text-[18px] border-b pb-2">${itemPrice.toFixed(2)}</span><br />
-            <span className="rounded-[5px] text-sm font-medium bg-app-primary text-primary-foreground hover:bg-app-primary/90 h-10 px-4 py-2 sm: h-9 rounded-md px-3">Customise your deal</span><br />
+          <div className="px-4 pt-4 pb-4 flex flex-col">
+            <span className="text-[16px] font-medium items-center overflow-hidden text-ellipsis [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical]">{itemName}</span>
+            <span className="font-bold mt-2 text-app-primary text-[18px] border-b pb-2">${itemPrice.toFixed(2)}</span>
+            <span className="rounded-[5px] text-center text-sm font-medium bg-app-primary text-primary-foreground hover:bg-app-primary/90 px-4 py-2 rounded-md px-3">Customise deal</span>
           </div>
           {/* <div className="absolute -top-2 -right-2">
               <input
@@ -546,11 +546,11 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
       ) : (
         <div className="mb-6">
           {/* <h3 className="text-[#000] text-[18px] font-semibold mb-3">Categories</h3> */}
-          <div className="flex w-full whitespace-nowrap overflow-x-auto custom-scrollbar gap-2">
+          <div className="flex flex-wrap w-full gap-2">
             <button
               key="all-items"
               onClick={handleClearMenuFilter}
-              className={`px-3 py-1.5 text-sm rounded-full transition-colors min-w-[215px] h-[40px] mb-[10px] ${!selectedMenu
+              className={`px-3 py-1.5 text-sm rounded-full transition-colors mb-[10px] ${!selectedMenu
                   ? 'bg-app-primary text-white font-semibold'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -562,7 +562,7 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
                 <button
                   key={menu._id}
                   onClick={() => handleMenuClick(menu)}
-                  className={`px-3 py-1.5 text-sm rounded-full transition-colors min-w-[215px] h-[40px] mb-[10px] ${selectedMenu?._id === menu._id
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors mb-[10px] ${selectedMenu?._id === menu._id
                       ? 'bg-app-primary text-white font-semibold'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
@@ -575,7 +575,7 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
                 <button
                   key={menu._id}
                   onClick={() => handleMenuClick(menu)}
-                  className={`px-3 py-1.5 text-sm rounded-full transition-colors min-w-[215px] h-[40px] mb-[10px] ${selectedMenu?._id === menu._id
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors mb-[10px] ${selectedMenu?._id === menu._id
                       ? 'bg-app-primary text-white font-semibold'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
@@ -613,7 +613,7 @@ const RestaurantsList = ({ onMenuItemSelect }) => {
             </h3>
 
             {filteredItems && filteredItems.length > 0 ? (
-              <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {filteredItems.map(item => (
                   <MenuItemCard
                     key={item._id}
