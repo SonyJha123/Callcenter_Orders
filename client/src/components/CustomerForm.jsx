@@ -10,6 +10,7 @@ import { Card } from './ui/card';
 
 const validationSchema = Yup.object().shape({
   name: Yup.string()
+    .min(3, 'Minimum three characters required')
     .required('Customer name is required'),
   phone: Yup.string()
     .required('Phone number is required')
@@ -522,7 +523,7 @@ const CustomerForm = ({ customerData, onCustomerInfoUpdate, onCustomerDataChange
                         <p className="font-medium text-sm">{item.name || item.item_id.itemName || item.itemName || 'Unknown Item'}</p>
                         <p className="text-sm font-semibold text-app-primary">${(item.price || 0).toFixed(2)}</p>
                       </div>
-                      {item.quantity > 1 && (
+                      {item.quantity > 0 && (
                         <p className="text-xs text-gray-500 text-[#000]">
                           Quantity: {item.quantity}
                         </p>
